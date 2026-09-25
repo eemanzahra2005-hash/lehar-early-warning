@@ -186,6 +186,12 @@ class Settings(BaseSettings):
     rate_limit_auth_per_minute: int = 5
     rate_limit_predict_per_minute: int = 30
     rate_limit_assistant_per_minute: int = 10
+    # LEHAR Phase 4: the public subscription endpoints that are not the
+    # subscribe call itself (email verify/unsubscribe links, the Telegram
+    # deep-link lookup). Looser than auth — a person may click a link twice,
+    # and the console looks up a link per district — but still bounded so
+    # none of them can be used to hammer the database.
+    rate_limit_subscription_per_minute: int = 20
 
     # --- Low-memory deployment mode (Phase 13, e.g. Render's free tier —
     # see render.yaml, docs/DEPLOY_RENDER.md) ---
@@ -327,6 +333,12 @@ class Settings(BaseSettings):
     # emails/day). Sends past the cap are recorded as deferred and retried
     # on the next run, highest level first.
     alert_max_sends_per_run: int = 200
+
+    # LEHAR Phase 4: how long GET /api/v1/alerts/health-summary (the public
+    # console banner) reuses one computed answer. Every console page load
+    # hits it, so without a cache each visitor would be a database query —
+    # and on Neon's free tier every query keeps the compute awake.
+    alert_health_summary_ttl_seconds: int = 60
 
     model_config = SettingsConfigDict(
         env_file=BASE_DIR / ".env",

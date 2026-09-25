@@ -53,6 +53,33 @@ alerts_suppressed_total = Counter(
     "inside the ALERT_COOLDOWN_HOURS window.",
 )
 
+# LEHAR Phase 4: the same suppressions, broken down. A separate metric
+# rather than labels on lehar_alerts_suppressed_total, so that existing
+# series (and any query already written against it) is left unchanged.
+# The alert_runs table only stores a per-run suppressed COUNT, so this is
+# also where GET /api/v1/alerts/stats reads its per-level/type breakdown
+# from — which is why that part of /stats is scoped to the process lifetime.
+alerts_suppressed_detail_total = Counter(
+    "lehar_alerts_suppressed_detail_total",
+    "Rule outcomes the alert engine deliberately did NOT raise, by alert "
+    "type, level and reason (duplicate | cooldown).",
+    ["type", "level", "reason"],
+)
+
+# LEHAR Phase 4: what the most recent alert run did, for the Grafana "last
+# run" panel. Gauges, not counters: each run overwrites them.
+alert_last_run_timestamp_seconds = Gauge(
+    "lehar_alert_last_run_timestamp_seconds",
+    "Unix time the most recent alert run finished in this process "
+    "(0 = no run yet since the process started).",
+)
+alert_last_run_outcomes = Gauge(
+    "lehar_alert_last_run_outcomes",
+    "What the most recent alert run did: districts checked and alerts "
+    "raised / suppressed / resolved.",
+    ["outcome"],
+)
+
 alert_run_duration_seconds = Histogram(
     "lehar_alert_run_duration_seconds",
     "Wall-clock time for one full alert evaluation run over every district "

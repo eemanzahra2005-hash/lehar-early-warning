@@ -30,3 +30,8 @@ def predict_rate_limit() -> str:
 
 def assistant_rate_limit() -> str:
     return f"{get_settings().rate_limit_assistant_per_minute}/minute"
+
+
+def subscription_rate_limit() -> str:
+    """LEHAR Phase 4: email verify/unsubscribe and the Telegram link lookup."""
+    return f"{get_settings().rate_limit_subscription_per_minute}/minute"

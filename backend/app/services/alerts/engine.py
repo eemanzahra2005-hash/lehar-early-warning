@@ -48,7 +48,14 @@ from sqlalchemy.orm import Session
 from app.config import get_settings
 from app.db import Alert, AlertRun, AlertSubscription
 from app.db import Field as FieldModel
-from app.metrics import alert_run_duration_seconds, alerts_raised_total, alerts_suppressed_total
+from app.metrics import (
+    alert_last_run_outcomes,
+    alert_last_run_timestamp_seconds,
+    alert_run_duration_seconds,
+    alerts_raised_total,
+    alerts_suppressed_detail_total,
+    alerts_suppressed_total,
+)
 from app.services.alerts import ops_events
 from app.services.alerts.channels import DeliveryDispatcher, SendBudget
 from app.services.alerts.levels import OPS_LEVEL
@@ -670,9 +677,15 @@ class AlertEngine:
 
         for alert in raised:
             alerts_raised_total.labels(type=alert.type, level=str(alert.level)).inc()
-        for _ in suppressed:
+        for item in suppressed:
             alerts_suppressed_total.inc()
+            alerts_suppressed_detail_total.labels(type=item.type, level=str(item.level), reason=item.reason).inc()
         alert_run_duration_seconds.observe(time.monotonic() - start_perf)
+        alert_last_run_timestamp_seconds.set(finished_at.timestamp())
+        alert_last_run_outcomes.labels(outcome="districts_checked").set(districts_checked)
+        alert_last_run_outcomes.labels(outcome="raised").set(len(raised))
+        alert_last_run_outcomes.labels(outcome="suppressed").set(len(suppressed))
+        alert_last_run_outcomes.labels(outcome="resolved").set(resolved_count)
 
         return AlertRunResult(
             run_id=run_row.id,

@@ -53,6 +53,12 @@ services:
         sync: false
       - key: ALERT_MAX_SENDS_PER_RUN
         value: "200"
+      # LEHAR Phase 4: the shared secret the scheduler (cron-job.org or
+      # GitHub Actions) sends as X-Alert-Run-Token to POST
+      # /api/v1/alerts/run. Unset = the endpoint refuses every run (503).
+      # See docs/SCHEDULER.md.
+      - key: ALERT_RUN_TOKEN
+        sync: false
       # Cloud-only on Render: there's no local Ollama to fall back to on a
       # hosted machine, so "hybrid"'s local fallback would just fail — see
       # docs/DEPLOY_RENDER.md for the tradeoff (assistant unavailable if no

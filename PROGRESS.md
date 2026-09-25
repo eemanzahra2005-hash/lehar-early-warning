@@ -558,12 +558,100 @@ exists on the development machine, so every provider interaction was
 tested against mocked HTTP only. The first real send is a Phase 6
 (deployment) check.
 
-## Phase 4 — Subscriptions, admin stats, scheduler docs
+## Phase 4 — Subscriptions, admin stats, scheduler docs — **DONE**
 
-- [ ] Subscriptions: who gets which district/level, on which channel
-- [ ] Admin stats endpoint(s)
-- [ ] Scheduler documentation (how the periodic evaluation is triggered)
-- [ ] Tests pass
+A small operations phase. The existing code was audited first and **only
+the missing pieces were added**. Nothing was removed and no existing test
+was changed. **No schema change and no new migration:**
+`test_alerts_migration.py` pins the Alembic head to the Phase 2 revision,
+and every Phase 4 figure could be derived from the tables that already
+exist.
+
+- [x] **Audit — already present from Phases 2/3:** email subscribe (rate-limited,
+      schema-validated), signed verify/unsubscribe links (incl. RFC 8058
+      one-click POST), Telegram `/start`/`/stop` + `GET /alerts/telegram/link`,
+      `GET /alerts/stats` (totals by status/type/level, deliveries by status,
+      last run). `/api/v1/health` was already DB-free.
+- [x] **Subscription API completeness** (`routers/alert_channels.py`):
+      - verify, unsubscribe and the Telegram link are now rate-limited with
+        the existing slowapi limiter, on the new
+        `RATE_LIMIT_SUBSCRIPTION_PER_MINUTE` (20). Subscribe keeps the
+        tighter auth limit.
+      - bilingual JSON: `message_en`/`message_ur` + `disclaimer_ur` on
+        subscribe (Phase 3's `detail` kept).
+      - `?format=json` on verify/unsubscribe returns
+        `SubscriptionResultResponse` (`verified` / `unsubscribed` /
+        `invalid_link`) with the same status code. HTML stays the default,
+        byte-for-byte as before.
+      - `TelegramLinkResponse` schema, now with `bot_username`,
+        `start_command` and bilingual instructions.
+- [x] **`GET /alerts/stats` additions** (`services/alerts/summary.py`, all
+      additive fields):
+      - raised and resolved per type × level
+      - `suppressed_total` (durable, from `alert_runs`)
+      - deliveries per channel × status
+      - median/p95 delivery latency per external channel, over at most the
+        latest 5000 sends, so memory stays bounded
+      - `active_subscriptions` (verified) and a per-channel split
+      - `last_run.duration_seconds`
+- [x] **Suppressed per type × level is scoped honestly.** `alert_runs` stores
+      only a per-run count, so the breakdown comes from a new
+      `lehar_alerts_suppressed_detail_total{type,level,reason}` counter. The
+      response labels it `suppressed_breakdown_scope: "since_process_start"`.
+      Making it durable would need a schema change, which was left for a
+      later phase. The original unlabelled `lehar_alerts_suppressed_total`
+      is unchanged.
+- [x] **`GET /alerts/health-summary`** (public, no auth):
+      - national highest active level + districts per level 1–5, built on
+        the same `highest_active_by_district` rows as `/alerts/active`
+      - cached `ALERT_HEALTH_SUMMARY_TTL_SECONDS` (60 s) with
+        `Cache-Control`; a run or an ack invalidates the cache immediately
+      - both disclaimers included
+- [x] **`scripts/run_alerts_once.py`** — one real run, with either an
+      in-process engine or `--url` (the exact POST + `X-Alert-Run-Token` the
+      scheduler sends). Prints a short summary or `--json`, with the
+      disclaimer.
+- [x] **[docs/SCHEDULER.md](docs/SCHEDULER.md)** covers:
+      - the cron-job.org job (POST `/alerts/run?trigger=cron` every 30 min
+        with `X-Alert-Run-Token`) and request-timeout behaviour
+      - optional UptimeRobot on `GET /api/v1/health` every 5 min
+      - why `/health` must not touch the DB (Neon compute hours; restart
+        loops)
+      - the Render free 750 h/month budget with and without a pinger
+      - a GitHub Actions cron alternative, documented but deliberately not
+        committed as a workflow
+- [x] `render.yaml` gained `ALERT_RUN_TOKEN` (`sync: false`). Without it the
+      deployed `/alerts/run` refuses every scheduled call.
+- [x] **Grafana:** an *Alerts* row on the provisioned LEHAR Overview
+      dashboard, titled with the disclaimer. Panels: raised by level,
+      deliveries by channel/status, delivery latency p95, and last alert
+      run, which uses new `lehar_alert_last_run_timestamp_seconds` +
+      `lehar_alert_last_run_outcomes{outcome}` gauges. The existing panels
+      are untouched.
+- [x] Env: `RATE_LIMIT_SUBSCRIPTION_PER_MINUTE`,
+      `ALERT_HEALTH_SUMMARY_TTL_SECONDS` in `config.py` + `backend/.env.example`
+      + README
+- [x] Docs: [docs/ALERTS.md](docs/ALERTS.md) §5 API reference,
+      [docs/MONITORING.md](docs/MONITORING.md) metrics + panels, README links
+- [x] Tests (offline), in three new files:
+      - `test_alerts_operations.py`: stats breakdowns, latency percentiles,
+        health-summary caching/invalidation/agreement with `/active`,
+        gauges, and dashboard integrity (unique ids, no overlap, every
+        queried metric really exported). Also asserts `/health` runs **zero
+        SQL statements** and `render.yaml` declares the token.
+      - `test_alert_subscriptions_api.py`: the full JSON opt-in flow,
+        validation, the Telegram link, and 429s on every public subscription
+        endpoint.
+      - `test_run_alerts_once_script.py`: the real engine in-process, and
+        the remote request against `httpx.MockTransport`.
+- [x] ruff clean; full suite green — **700 passed** (643 existing +
+      57 new, none of the existing removed or modified)
+- [x] git commit: "phase4: subscriptions, stats, scheduler docs"
+
+**Not verified against live services:** cron-job.org, UptimeRobot, Render
+and Neon were not configured from the development machine. The schedule is
+documented and the exact request is tested against a mock and in-process.
+The first real scheduled run is a Phase 6 check.
 
 ## Phase 5 — Next.js Early-Warning Console (separate repo)
 

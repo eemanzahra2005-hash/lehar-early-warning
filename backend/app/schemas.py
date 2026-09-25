@@ -769,6 +769,17 @@ class AlertRunResponse(BaseModel):
     all_clear_alert_ids: list[int]
     suppressed: list[AlertSuppressionSummary]
     disclaimer: str
+    # LEHAR Phase 4: finished_at - started_at, for the scheduler summary.
+    duration_seconds: float | None = None
+
+
+class DeliveryLatencySummary(BaseModel):
+    """One channel's delivery latency, over its most recent successful
+    sends (at most LATENCY_SAMPLE_LIMIT — see alerts/summary.py)."""
+
+    sample_size: int
+    median_ms: float
+    p95_ms: int  # nearest-rank: always a latency that actually happened
 
 
 class AlertStatsResponse(BaseModel):
@@ -787,6 +798,46 @@ class AlertStatsResponse(BaseModel):
     total_runs: int
     last_run: AlertRunResponse | None = None
     disclaimer: str
+    # --- LEHAR Phase 4 additions (all additive) ---
+    # {type: {level: count}}. Every alerts row is a raised alert.
+    raised_by_type_and_level: dict[str, dict[str, int]] = Field(default_factory=dict)
+    resolved_by_type_and_level: dict[str, dict[str, int]] = Field(default_factory=dict)
+    # All-time, from the alert_runs rows.
+    suppressed_total: int = 0
+    # Per type/level. alert_runs stores only a per-run count, so this comes
+    # from the in-process counter and resets with the process — the scope
+    # field below says so ("since_process_start").
+    suppressed_by_type_and_level: dict[str, dict[str, int]] = Field(default_factory=dict)
+    suppressed_breakdown_scope: str = "since_process_start"
+    # {channel: {status: count}} — sent | failed | skipped per channel.
+    deliveries_by_channel: dict[str, dict[str, int]] = Field(default_factory=dict)
+    # {channel: {...}} for telegram/email; a channel with no sends is absent.
+    delivery_latency: dict[str, DeliveryLatencySummary] = Field(default_factory=dict)
+    # Verified subscriptions only — the ones that are actually messaged.
+    # `subscriptions` above stays the raw row count.
+    active_subscriptions: int = 0
+    active_subscriptions_by_channel: dict[str, int] = Field(default_factory=dict)
+
+
+class AlertHealthSummaryResponse(BaseModel):
+    """GET /api/v1/alerts/health-summary — the public console banner.
+    Built from the same rows as GET /alerts/active, cached briefly."""
+
+    generated_at: datetime
+    highest_level: int  # 1-5; 1 = every district calm
+    highest_level_key: str
+    highest_level_name_en: str
+    highest_level_name_ur: str
+    highest_level_color_hex: str
+    highest_level_text_color_hex: str
+    # Districts at each level, "1" .. "5"; a calm district counts at "1".
+    counts_by_level: dict[str, int]
+    total_districts: int
+    alerting_districts: int
+    cached: bool
+    cache_ttl_seconds: int
+    disclaimer: str
+    disclaimer_ur: str
 
 
 # --- LEHAR Phase 3: alert delivery channels ---------------------------------
@@ -810,6 +861,41 @@ class EmailSubscribeResponse(BaseModel):
     status: str
     detail: str
     disclaimer: str
+    # LEHAR Phase 4: the same message in both languages, so the console can
+    # show whichever the farmer reads without translating client-side.
+    message_en: str = ""
+    message_ur: str = ""
+    disclaimer_ur: str = ""
+
+
+class SubscriptionResultResponse(BaseModel):
+    """LEHAR Phase 4: JSON form (?format=json) of the email verify and
+    unsubscribe results, for a console that calls them itself instead of
+    showing LEHAR's small HTML page."""
+
+    status: str  # "verified" | "unsubscribed" | "invalid_link"
+    message_en: str
+    message_ur: str
+    districts: list[str] = Field(default_factory=list)
+    min_level: int | None = None
+    language: str | None = None
+    disclaimer: str
+    disclaimer_ur: str
+
+
+class TelegramLinkResponse(BaseModel):
+    """GET /api/v1/alerts/telegram/link — the one-tap subscribe deep link."""
+
+    district: str
+    district_code: str
+    url: str
+    bot_username: str
+    # The /start command the link sends, for someone typing it by hand.
+    start_command: str
+    instructions_en: str
+    instructions_ur: str
+    disclaimer: str
+    disclaimer_ur: str
 
 
 class TelegramWebhookResponse(BaseModel):

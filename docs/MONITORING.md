@@ -74,6 +74,14 @@ per CLAUDE.md rule 4, never on a timer or with demo data):
 | `flood_api_failures_total` | Counter | — | Every failed Open-Meteo Flood API (GloFAS) call (`app/services/flood.py`) |
 | `assistant_requests_total` | Counter | `provider` | Every successful AI assistant reply, labeled by which provider (`cloud`/`local`) actually answered (`app/routers/assistant.py`) |
 | `model_info` | Gauge | `version` | Always `1` for whichever model version is currently served — updated at initial load, promote, and rollback (`app/dependencies.py`'s `set_model_service`) so it changes immediately, no restart needed |
+| `lehar_alerts_raised_total` | Counter | `type`, `level` | Every alert row the engine writes (LEHAR Phase 2, `app/services/alerts/engine.py`) |
+| `lehar_alerts_suppressed_total` | Counter | — | Every rule outcome deliberately not raised (duplicate / cooldown) |
+| `lehar_alerts_suppressed_detail_total` | Counter | `type`, `level`, `reason` | The same suppressions, broken down (LEHAR Phase 4); also the source of `/alerts/stats`' `suppressed_by_type_and_level` |
+| `lehar_alert_run_duration_seconds` | Histogram | — | Wall-clock time of one full alert run |
+| `lehar_alert_last_run_timestamp_seconds` | Gauge | — | Unix time the most recent alert run finished in this process (Phase 4) |
+| `lehar_alert_last_run_outcomes` | Gauge | `outcome` | The most recent run's `districts_checked` / `raised` / `suppressed` / `resolved` (Phase 4) |
+| `lehar_deliveries_total` | Counter | `channel`, `status` | Every `alert_deliveries` row written (Phase 3) |
+| `lehar_delivery_latency_seconds` | Histogram | `channel` | Raised → provider accepted, successful Telegram/email sends only (Phase 3) |
 
 ## Provisioning
 
@@ -108,6 +116,20 @@ the committed file stays the single source of truth.
 | p95 latency | 95th-percentile latency, both overall (`http_request_duration_highr_seconds`) and predict-only (`prediction_latency_seconds`) |
 | Predictions per hour by source | `predictions_total` split by `source` (`model_prediction` / `fallback_rule_based` / `rule_flood_override`) — a spike in `fallback_rule_based` means sensor-fault simulations, `rule_flood_override` means the flood cross-link fired |
 | Top 10 districts by predictions | `topk(10, sum by (district) (predictions_total))` — cumulative since the API process last started (Prometheus counters reset on restart) |
+
+**Alerts row (LEHAR Phase 4)** — titled with the research-advisory
+disclaimer (CLAUDE.md rule 12):
+
+| Panel | What it shows |
+|---|---|
+| Alerts raised by level | `sum by (level) (increase(lehar_alerts_raised_total[1h]))`, stacked bars |
+| Deliveries by channel / status | `sum by (channel, status) (increase(lehar_deliveries_total[1h]))` — a growing `failed` or `skipped` band is the first thing to look at when a subscriber says they got nothing |
+| Delivery latency p95 | `histogram_quantile(0.95, …lehar_delivery_latency_seconds_bucket[1h])` per channel |
+| Last alert run | `time() - lehar_alert_last_run_timestamp_seconds` (orange past 35 min, red past 1 h on the 30-minute schedule in [SCHEDULER.md](SCHEDULER.md)) plus the last run's outcome gauges. Shows *no run yet* after a restart until the next scheduled run |
+
+The same numbers, from the database rather than process memory (so they
+survive a restart), are in `GET /api/v1/alerts/stats` — see
+[ALERTS.md](ALERTS.md#5-subscription-and-operations-api-phase-4).
 
 ## Model performance (live)
 

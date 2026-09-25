@@ -5,6 +5,7 @@
     GET  /api/v1/alerts/active     per-district highest active level
     GET  /api/v1/alerts/levels     the level scheme (single source of truth)
     GET  /api/v1/alerts/stats      admin counters (JWT)
+    GET  /api/v1/alerts/health-summary  national banner (public, cached)
     POST /api/v1/alerts/{id}/ack   acknowledge one alert
 
 Auth model for this phase:
@@ -16,13 +17,17 @@ Auth model for this phase:
   - the read endpoints and /ack are open, like POST /api/v1/predict: a
     farmer must be able to see and dismiss a flood warning without an
     account. Phase 4 revisits this when subscriptions gain owners.
+
+LEHAR Phase 4 extends /stats with per-type/level and per-channel
+breakdowns and delivery latency, and adds /health-summary — both read-only
+aggregations in app/services/alerts/summary.py.
 """
 
 import hmac
 import logging
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Query, status
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, Response, status
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
@@ -32,6 +37,7 @@ from app.db import Alert, AlertDelivery, AlertRun, AlertSubscription, User, get_
 from app.dependencies import get_alert_engine
 from app.schemas import (
     ActiveAlertsResponse,
+    AlertHealthSummaryResponse,
     AlertLevelsResponse,
     AlertListResponse,
     AlertResponse,
@@ -52,6 +58,7 @@ from app.services.alerts.engine import (
 )
 from app.services.alerts.levels import DISCLAIMER_EN, all_levels
 from app.services.alerts.rules import ALERT_TYPES
+from app.services.alerts.summary import build_health_summary, health_summary_cache, operations_stats
 
 logger = logging.getLogger("app.alerts")
 
@@ -65,6 +72,12 @@ LEVELS_NOTE = (
     "Every level, colour, name and action served here comes from "
     "app/services/alerts/levels.py — see docs/ALERT_LEVELS.md."
 )
+
+
+def _duration_seconds(started_at: datetime, finished_at: datetime | None) -> float | None:
+    if finished_at is None:
+        return None
+    return round((finished_at - started_at).total_seconds(), 3)
 
 
 def _run_response(result: AlertRunResult) -> AlertRunResponse:
@@ -89,6 +102,7 @@ def _run_response(result: AlertRunResult) -> AlertRunResponse:
             for item in result.suppressed
         ],
         disclaimer=DISCLAIMER_EN,
+        duration_seconds=_duration_seconds(result.started_at, result.finished_at),
     )
 
 
@@ -117,6 +131,8 @@ def run_alerts(
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid alert run token.")
 
     result = engine.run(db, trigger=trigger)
+    # The banner must show a new alert now, not up to a TTL later.
+    health_summary_cache.invalidate()
     logger.info(
         "alert.run trigger=%s districts=%s raised=%s suppressed=%s resolved=%s",
         result.trigger,
@@ -233,6 +249,7 @@ def get_alert_stats(
             all_clear_alert_ids=[],
             suppressed=[],
             disclaimer=DISCLAIMER_EN,
+            duration_seconds=_duration_seconds(last_run_row.started_at, last_run_row.finished_at),
         )
 
     return AlertStatsResponse(
@@ -248,7 +265,27 @@ def get_alert_stats(
         total_runs=db.query(func.count(AlertRun.id)).scalar() or 0,
         last_run=last_run,
         disclaimer=DISCLAIMER_EN,
+        **operations_stats(db),
     )
+
+
+@router.get("/health-summary", response_model=AlertHealthSummaryResponse)
+def get_alert_health_summary(response: Response, db: Session = Depends(get_db)) -> AlertHealthSummaryResponse:
+    """The public console banner: the national highest active level and how
+    many districts sit at each level. No auth — it says nothing /alerts/active
+    doesn't already say publicly.
+
+    Cached for ALERT_HEALTH_SUMMARY_TTL_SECONDS (60 s): every console page
+    load calls this, and on Neon's free tier every query keeps the database
+    compute awake. A run or an acknowledgement clears the cache, so the TTL
+    only ever delays "nothing changed". Not an uptime-ping target — point
+    pingers at GET /api/v1/health, which never touches the database
+    (docs/SCHEDULER.md)."""
+    ttl = get_settings().alert_health_summary_ttl_seconds
+    summary, cached = health_summary_cache.get(ttl, lambda: build_health_summary(db))
+    # Lets a browser or CDN in front of the API reuse it too.
+    response.headers["Cache-Control"] = f"public, max-age={ttl}"
+    return AlertHealthSummaryResponse(**summary, cached=cached, cache_ttl_seconds=ttl)
 
 
 @router.post("/{alert_id}/ack", response_model=AlertResponse)
@@ -271,4 +308,6 @@ def acknowledge_alert(alert_id: int, db: Session = Depends(get_db)) -> AlertResp
         alert.status = STATUS_ACKNOWLEDGED
         db.commit()
         db.refresh(alert)
+        # An acknowledged alert no longer colours the banner (see /active).
+        health_summary_cache.invalidate()
     return AlertResponse.model_validate(alert)

@@ -16,6 +16,15 @@ Auth model:
     verify/unsubscribe act only on a token LEHAR signed. subscribe shares the
     auth endpoints' per-IP rate limit, so it cannot be used to spray
     confirmation emails.
+
+LEHAR Phase 4 additions (no behaviour of the above changes):
+  - verify, unsubscribe and the Telegram link lookup are rate-limited too,
+    on the looser RATE_LIMIT_SUBSCRIPTION_PER_MINUTE.
+  - every JSON answer carries its message in English AND Urdu
+    (message_en / message_ur) plus both disclaimers.
+  - verify and unsubscribe accept ?format=json for a console that calls
+    them itself; the default is still the HTML page a person sees after
+    clicking the link in an email.
 """
 
 import hmac
@@ -23,16 +32,22 @@ import html
 import logging
 from typing import Any
 
-from fastapi import APIRouter, Body, Depends, Header, HTTPException, Query, Request, status
-from fastapi.responses import HTMLResponse
+from fastapi import APIRouter, Body, Depends, Header, HTTPException, Query, Request, Response, status
+from fastapi.responses import HTMLResponse, JSONResponse
 from jose import JWTError
 from sqlalchemy.orm import Session
 
 from app.config import get_settings
 from app.db import AlertSubscription, get_db
 from app.dependencies import get_email_channel, get_telegram_bot
-from app.rate_limit import auth_rate_limit, limiter
-from app.schemas import EmailSubscribeRequest, EmailSubscribeResponse, TelegramWebhookResponse
+from app.rate_limit import auth_rate_limit, limiter, subscription_rate_limit
+from app.schemas import (
+    EmailSubscribeRequest,
+    EmailSubscribeResponse,
+    SubscriptionResultResponse,
+    TelegramLinkResponse,
+    TelegramWebhookResponse,
+)
 from app.services.alerts.channels.base import resolve_district
 from app.services.alerts.levels import CHANNEL_EMAIL, DISCLAIMER_EN, DISCLAIMER_UR
 from ml.districts import DISTRICTS, district_code
@@ -81,10 +96,15 @@ def telegram_webhook(
     return TelegramWebhookResponse(ok=True, handled=handled)
 
 
-@router.get("/telegram/link")
-def telegram_link(district: str = Query(..., min_length=1, max_length=64)) -> dict:
+@router.get("/telegram/link", response_model=TelegramLinkResponse)
+@limiter.limit(subscription_rate_limit)
+def telegram_link(request: Request, district: str = Query(..., min_length=1, max_length=64)) -> TelegramLinkResponse:
     """The one-tap subscribe link for a district, for the console and the
-    local frontend to show next to a district's alert level."""
+    local frontend to show next to a district's alert level.
+
+    Read-only and DB-free: subscribing actually happens when the person taps
+    the link and Telegram sends /start to the webhook, which is what creates
+    and verifies the row (a chat that sends /start has proven it is real)."""
     username = get_settings().telegram_bot_username.lstrip("@")
     if not username:
         raise HTTPException(
@@ -95,12 +115,23 @@ def telegram_link(district: str = Query(..., min_length=1, max_length=64)) -> di
     if name is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Unknown district: {district}")
     code = district_code(name)
-    return {
-        "district": name,
-        "district_code": code,
-        "url": f"https://t.me/{username}?start={code}",
-        "disclaimer": DISCLAIMER_EN,
-    }
+    return TelegramLinkResponse(
+        district=name,
+        district_code=code,
+        url=f"https://t.me/{username}?start={code}",
+        bot_username=username,
+        start_command=f"/start {code}",
+        instructions_en=(
+            f"Open the link and press Start to receive LEHAR research alerts for {name}. "
+            "Send /level 3 to change the minimum level, /lang ur for Urdu, and /stop to unsubscribe."
+        ),
+        instructions_ur=(
+            f"{name} کے لہر تحقیقی الرٹ حاصل کرنے کے لیے لنک کھولیں اور Start دبائیں۔ "
+            "کم از کم درجہ بدلنے کے لیے /level 3، اردو کے لیے /lang ur اور رکنیت ختم کرنے کے لیے /stop بھیجیں۔"
+        ),
+        disclaimer=DISCLAIMER_EN,
+        disclaimer_ur=DISCLAIMER_UR,
+    )
 
 
 # --- Email double opt-in ----------------------------------------------------------
@@ -117,9 +148,43 @@ def _page(status_code: int, heading_en: str, text_en: str, heading_ur: str, text
     return HTMLResponse(content=body, status_code=status_code)
 
 
-def _invalid_link_page() -> HTMLResponse:
-    return _page(
+# ?format= values for verify/unsubscribe. html (the default) is the page a
+# person sees after clicking the link in an email.
+FORMAT_HTML = "html"
+FORMAT_JSON = "json"
+FORMAT_PATTERN = f"^({FORMAT_HTML}|{FORMAT_JSON})$"
+
+
+def _result(
+    fmt: str,
+    status_code: int,
+    result_status: str,
+    heading_en: str,
+    text_en: str,
+    heading_ur: str,
+    text_ur: str,
+    **extra,
+) -> Response:
+    """The same result as the HTML page or, with ?format=json, as JSON with
+    the same status code — so both forms always say the same thing."""
+    if fmt == FORMAT_JSON:
+        body = SubscriptionResultResponse(
+            status=result_status,
+            message_en=text_en,
+            message_ur=text_ur,
+            disclaimer=DISCLAIMER_EN,
+            disclaimer_ur=DISCLAIMER_UR,
+            **extra,
+        )
+        return JSONResponse(content=body.model_dump(mode="json"), status_code=status_code)
+    return _page(status_code, heading_en, text_en, heading_ur, text_ur)
+
+
+def _invalid_link_page(fmt: str = FORMAT_HTML) -> HTMLResponse | JSONResponse:
+    return _result(
+        fmt,
         status.HTTP_400_BAD_REQUEST,
+        "invalid_link",
         "Link invalid or expired",
         "This link is not valid, or it has expired. Please subscribe again from the LEHAR app.",
         "لنک درست نہیں یا ختم ہو چکا ہے",
@@ -192,21 +257,34 @@ def subscribe_email(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail="The confirmation email could not be sent. Please try again later.",
         )
+    message_en = "Check your inbox and click the confirmation link within 48 hours. No alerts are sent until you do."
     return EmailSubscribeResponse(
         status="verification_sent",
-        detail="Check your inbox and click the confirmation link within 48 hours. No alerts are sent until you do.",
+        detail=message_en,
         disclaimer=DISCLAIMER_EN,
+        message_en=message_en,
+        message_ur=(
+            "اپنا ای میل ان باکس دیکھیں اور 48 گھنٹوں کے اندر تصدیقی لنک پر کلک کریں۔ "
+            "جب تک آپ ایسا نہیں کرتے، کوئی الرٹ نہیں بھیجا جائے گا۔"
+        ),
+        disclaimer_ur=DISCLAIMER_UR,
     )
 
 
 @router.get("/email/verify", response_class=HTMLResponse)
-def verify_email(token: str = Query(..., max_length=4096), db: Session = Depends(get_db)) -> HTMLResponse:
+@limiter.limit(subscription_rate_limit)
+def verify_email(
+    request: Request,
+    token: str = Query(..., max_length=4096),
+    format: str = Query(default=FORMAT_HTML, pattern=FORMAT_PATTERN),
+    db: Session = Depends(get_db),
+) -> Response:
     from app.services.alerts.channels.email import TOKEN_TYPE_VERIFY, decode_token
 
     try:
         claims = decode_token(token, TOKEN_TYPE_VERIFY)
     except JWTError:
-        return _invalid_link_page()
+        return _invalid_link_page(format)
     subscription = _subscription_for(db, claims)
     districts = claims.get("districts") or []
     min_level = claims.get("min_level")
@@ -218,26 +296,37 @@ def verify_email(token: str = Query(..., max_length=4096), db: Session = Depends
         or min_level not in (2, 3, 4, 5)
         or language not in ("en", "ur")
     ):
-        return _invalid_link_page()
+        return _invalid_link_page(format)
 
     subscription.districts = list(districts)
     subscription.min_level = min_level
     subscription.language = language
     subscription.verified = True
     db.commit()
-    return _page(
+    return _result(
+        format,
         status.HTTP_200_OK,
+        "verified",
         "Subscription confirmed",
         f"You will receive LEHAR research alerts for {', '.join(districts)} at level {min_level} and above. "
         "Every email has an unsubscribe link.",
         "رکنیت کی تصدیق ہو گئی",
         f"آپ کو {', '.join(districts)} کے لیے درجہ {min_level} اور اس سے زیادہ کے لہر تحقیقی الرٹ ملیں گے۔ "
         "ہر ای میل میں رکنیت ختم کرنے کا لنک موجود ہے۔",
+        districts=list(districts),
+        min_level=min_level,
+        language=language,
     )
 
 
 @router.api_route("/email/unsubscribe", methods=["GET", "POST"], response_class=HTMLResponse)
-def unsubscribe_email(token: str = Query(..., max_length=4096), db: Session = Depends(get_db)) -> HTMLResponse:
+@limiter.limit(subscription_rate_limit)
+def unsubscribe_email(
+    request: Request,
+    token: str = Query(..., max_length=4096),
+    format: str = Query(default=FORMAT_HTML, pattern=FORMAT_PATTERN),
+    db: Session = Depends(get_db),
+) -> Response:
     """GET for the link in the email body; POST for mail clients' one-click
     List-Unsubscribe button (RFC 8058). Both only ever turn alerts OFF."""
     from app.services.alerts.channels.email import TOKEN_TYPE_UNSUBSCRIBE, decode_token
@@ -245,17 +334,19 @@ def unsubscribe_email(token: str = Query(..., max_length=4096), db: Session = De
     try:
         claims = decode_token(token, TOKEN_TYPE_UNSUBSCRIBE)
     except JWTError:
-        return _invalid_link_page()
+        return _invalid_link_page(format)
     subscription = _subscription_for(db, claims)
     if subscription is None:
-        return _invalid_link_page()
+        return _invalid_link_page(format)
     if subscription.verified:
         # Unverified == never messaged, so no new column is needed and the
         # delivery history stays intact.
         subscription.verified = False
         db.commit()
-    return _page(
+    return _result(
+        format,
         status.HTTP_200_OK,
+        "unsubscribed",
         "Unsubscribed",
         "You will not receive any more LEHAR alert emails. You can subscribe again at any time from the LEHAR app.",
         "رکنیت ختم ہو گئی",

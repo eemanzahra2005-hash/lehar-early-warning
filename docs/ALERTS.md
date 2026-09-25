@@ -248,3 +248,79 @@ the script against the deployed URL).
 raise from live data; LEHAR never fabricates an alert to test with. The
 `alert_deliveries` table and `GET /api/v1/alerts/stats`'
 `deliveries_by_status` show what was sent, skipped or failed, and why.
+
+---
+
+## 5. Subscription and operations API (Phase 4)
+
+Every endpoint below is under `/api/v1/alerts`. Every JSON answer that
+concerns an alert or a subscription carries `disclaimer` (and, where a
+farmer reads it, `disclaimer_ur`) — *Research advisory — NDMA/PMD/PDMA
+official warnings are authoritative*.
+
+### Public (no account)
+
+| Endpoint | Rate limit (per IP) | What it does |
+|---|---|---|
+| `POST /email/subscribe` | `RATE_LIMIT_AUTH_PER_MINUTE` (5) | Start the double opt-in. Body validated by `EmailSubscribeRequest`: `email`, `districts` (1–107 codes or names), `min_level` 2–5, `language` `en`/`ur`. **202** `{status: "verification_sent", message_en, message_ur, disclaimer, disclaimer_ur}` (`detail` = `message_en`, kept from Phase 3). 422 on bad input, 400 on an unknown district, 503 if email is not configured |
+| `GET /email/verify?token=…` | `RATE_LIMIT_SUBSCRIPTION_PER_MINUTE` (20) | Apply the preferences in the signed link and mark the row verified |
+| `GET` or `POST /email/unsubscribe?token=…` | same | Stop alerts (`verified=False`; delivery history kept) |
+| `GET /telegram/link?district=…` | same | The one-tap `https://t.me/<bot>?start=<code>` link, plus `bot_username`, `start_command` and bilingual `instructions_en`/`instructions_ur`. 404 unknown district, 503 if `TELEGRAM_BOT_USERNAME` is unset. Subscribing itself happens when the person presses **Start** (the webhook verifies the chat); `/stop` unsubscribes |
+| `GET /health-summary` | — (cached) | The console banner — see below |
+
+**`?format=json` on verify and unsubscribe.** By default both return the
+small bilingual HTML page a person sees after clicking a link in an email
+(unchanged from Phase 3). With `format=json` they return the same outcome
+as JSON, with the same status code:
+
+```json
+{"status": "verified", "message_en": "You will receive LEHAR research alerts for Multan at level 3 and above. …",
+ "message_ur": "…", "districts": ["Multan"], "min_level": 3, "language": "ur",
+ "disclaimer": "Research advisory — NDMA/PMD/PDMA official warnings are authoritative.", "disclaimer_ur": "…"}
+```
+
+`status` is `verified`, `unsubscribed` or `invalid_link` (HTTP 400 — bad,
+expired, wrong-type or wrong-address token). The flow end to end:
+
+```
+POST /email/subscribe            -> 202 verification_sent   (row created, verified=false, one email sent)
+GET  /email/verify?token=…       -> 200 verified            (verified=true, preferences applied)
+GET  /email/unsubscribe?token=…  -> 200 unsubscribed        (verified=false)
+```
+
+### `GET /health-summary` — the public banner
+
+```json
+{"generated_at": "…", "highest_level": 3, "highest_level_key": "L3",
+ "highest_level_name_en": "Warning", "highest_level_name_ur": "…",
+ "highest_level_color_hex": "#E03131", "highest_level_text_color_hex": "…",
+ "counts_by_level": {"1": 101, "2": 4, "3": 2, "4": 0, "5": 0},
+ "total_districts": 107, "alerting_districts": 6,
+ "cached": true, "cache_ttl_seconds": 60, "disclaimer": "…", "disclaimer_ur": "…"}
+```
+
+Built from exactly the rows `GET /active` serves, so the banner and the map
+never disagree: a calm district counts at level 1, acknowledged/resolved
+alerts, ALL_CLEARs and OPS notices never count. Cached for
+`ALERT_HEALTH_SUMMARY_TTL_SECONDS` (60) with `Cache-Control: public,
+max-age=60`; an alert run or an acknowledgement clears the cache at once, so
+the TTL can only ever delay "nothing changed". It is still a database read —
+point uptime pingers at `/api/v1/health` instead ([SCHEDULER.md](SCHEDULER.md)).
+
+### Admin: `GET /stats` (JWT)
+
+Phase 2's fields are unchanged; Phase 4 adds:
+
+| Field | Meaning |
+|---|---|
+| `raised_by_type_and_level` | `{type: {level: n}}` over every alert row (a suppression writes no row, so every row was raised) |
+| `resolved_by_type_and_level` | the same, for `status = resolved` |
+| `suppressed_total` | all-time, the sum of every `alert_runs.alerts_suppressed` |
+| `suppressed_by_type_and_level` + `suppressed_breakdown_scope` | per type/level, from the `lehar_alerts_suppressed_detail_total` counter. `alert_runs` only stores a per-run count, so this breakdown is **`since_process_start`** and resets when the API restarts (on Render free, whenever it spins down) — the response says so rather than passing it off as all-time |
+| `deliveries_by_channel` | `{channel: {status: n}}` — `in_app` / `telegram` / `email` × `sent` / `failed` / `skipped` |
+| `delivery_latency` | `{channel: {sample_size, median_ms, p95_ms}}` for Telegram and email, over the most recent ≤ 5000 successful sends per channel (bounded for the 512 MB host). Median is the textbook median; p95 is nearest-rank, so it is always a latency that actually happened. A channel with no sends is absent, never zero-filled |
+| `active_subscriptions`, `active_subscriptions_by_channel` | verified subscriptions only — the ones that are actually messaged (`subscriptions` stays the raw row count) |
+| `last_run.duration_seconds` | how long the most recent run took |
+
+Scheduling the runs themselves, and running one by hand with
+`scripts/run_alerts_once.py`, is covered in [SCHEDULER.md](SCHEDULER.md).

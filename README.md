@@ -303,6 +303,8 @@ is read by `backend/app/config.py`'s `Settings`.
 | `BREVO_API_KEY` / `ALERT_FROM_EMAIL` / `ALERT_FROM_NAME` | *(empty)* / *(empty)* / `LEHAR Alerts` | Email alert delivery via Brevo's HTTPS API; disabled while empty |
 | `PUBLIC_BASE_URL` | *(empty)* | Public https:// origin of the API, for email links and the Telegram webhook |
 | `ALERT_MAX_SENDS_PER_RUN` | `200` | Cap on Telegram + email sends per alert run (free-tier budget) |
+| `ALERT_HEALTH_SUMMARY_TTL_SECONDS` | `60` | Cache lifetime of the public `GET /api/v1/alerts/health-summary` banner |
+| `RATE_LIMIT_SUBSCRIPTION_PER_MINUTE` | `20` | Per-IP limit on email verify/unsubscribe and the Telegram link lookup |
 | `RISK_W_MOISTURE_DEFICIT` | `0.35` | Farm Risk Score component weight |
 | `RISK_W_ET0_DEMAND` | `0.20` | Farm Risk Score component weight |
 | `RISK_W_HEAT_STRESS` | `0.15` | Farm Risk Score component weight |
@@ -422,7 +424,12 @@ What **is** real, live data:
   `docs/MONITORING.md`
 - [docs/ALERTS.md](docs/ALERTS.md) — alert delivery over Telegram and email
   (Brevo): creating the bot, setting the webhook, the Brevo key and sender,
-  the double opt-in, delivery rules, and testing locally
+  the double opt-in, delivery rules, and testing locally; plus the Phase 4
+  subscription/stats/health-summary API reference
+- [docs/SCHEDULER.md](docs/SCHEDULER.md) — scheduling alert runs
+  (cron-job.org, optional UptimeRobot, GitHub Actions), why `/health`
+  never touches the database, the Render free-hours budget, and
+  `scripts/run_alerts_once.py`
 - [docs/SOIL_MOISTURE.md](docs/SOIL_MOISTURE.md) — live soil moisture:
   Open-Meteo source, depth weighting, the m³/m³ → `soil_moisture_pct`
   mapping and why, and its honest limits

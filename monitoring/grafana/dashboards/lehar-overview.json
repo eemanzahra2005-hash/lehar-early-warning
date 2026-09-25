@@ -3,10 +3,10 @@
   "uid": "lehar-overview",
   "title": "LEHAR Overview",
   "description": "LEHAR — live API health and usage, from real Prometheus metrics scraped off the running FastAPI app. See docs/MONITORING.md.",
-  "tags": ["lehar", "early-warning", "irrigation"],
+  "tags": ["lehar", "early-warning", "irrigation", "alerts"],
   "timezone": "browser",
   "schemaVersion": 39,
-  "version": 1,
+  "version": 2,
   "editable": true,
   "refresh": "30s",
   "time": { "from": "now-6h", "to": "now" },
@@ -230,6 +230,266 @@
         "orientation": "horizontal",
         "displayMode": "gradient",
         "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }
+      }
+    },
+    {
+      "id": 9,
+      "type": "row",
+      "title": "Alerts (LEHAR Phase 4) — research advisory; NDMA/PMD/PDMA official warnings are authoritative",
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 20
+      },
+      "panels": []
+    },
+    {
+      "id": 10,
+      "type": "timeseries",
+      "title": "Alerts raised by level",
+      "description": "Alerts the rule engine actually wrote, per hour, by level (0 = OPS, 1-5 farmer-facing). Source: lehar_alerts_raised_total. See docs/ALERT_LEVELS.md.",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 21
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum by (level) (increase(lehar_alerts_raised_total[1h]))",
+          "legendFormat": "level {{level}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "drawStyle": "bars",
+            "fillOpacity": 80,
+            "showPoints": "never",
+            "stacking": {
+              "mode": "normal"
+            }
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "sum"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      }
+    },
+    {
+      "id": 11,
+      "type": "timeseries",
+      "title": "Deliveries by channel / status",
+      "description": "alert_deliveries rows written per hour, by channel (in_app | telegram | email) and status (sent | failed | skipped). Source: lehar_deliveries_total.",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 21
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum by (channel, status) (increase(lehar_deliveries_total[1h]))",
+          "legendFormat": "{{channel}} {{status}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "drawStyle": "bars",
+            "fillOpacity": 80,
+            "showPoints": "never",
+            "stacking": {
+              "mode": "normal"
+            }
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "sum"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      }
+    },
+    {
+      "id": 12,
+      "type": "timeseries",
+      "title": "Delivery latency p95",
+      "description": "95th percentile from an alert being raised to Telegram/Brevo accepting the message, per channel. Successful external sends only. Source: lehar_delivery_latency_seconds.",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 29
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "histogram_quantile(0.95, sum by (le, channel) (rate(lehar_delivery_latency_seconds_bucket[1h])))",
+          "legendFormat": "p95 {{channel}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "showPoints": "never"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "mean",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      }
+    },
+    {
+      "id": 13,
+      "type": "stat",
+      "title": "Last alert run",
+      "description": "Time since the most recent alert run finished in this API process, and what it did. With the 30-minute scheduler (docs/SCHEDULER.md) 'ago' should stay under ~35 min. Sources: lehar_alert_last_run_timestamp_seconds, lehar_alert_last_run_outcomes.",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 29
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "time() - (lehar_alert_last_run_timestamp_seconds > 0)",
+          "legendFormat": "ago",
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "lehar_alert_last_run_outcomes",
+          "legendFormat": "{{outcome}}",
+          "refId": "B"
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "value_and_name",
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "noValue": "no run yet"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "ago"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "s"
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "orange",
+                      "value": 2100
+                    },
+                    {
+                      "color": "red",
+                      "value": 3600
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        ]
       }
     }
   ]
