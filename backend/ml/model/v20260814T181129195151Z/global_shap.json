@@ -1,0 +1,16 @@
+{
+  "sample_size": 500,
+  "mean_abs_shap_mm": {
+    "soil_moisture_pct": 4.1094,
+    "evapotranspiration_mm": 1.6155,
+    "rainfall_mm": 0.9321,
+    "temperature_c": 0.0034,
+    "humidity_pct": 0.0025,
+    "day_of_year": 0.0013,
+    "canal_flow_cusecs": 0.0006,
+    "district": 0.0004,
+    "crop_type": 0.0002,
+    "month": 0.0001,
+    "was_imputed": 0.0
+  }
+}

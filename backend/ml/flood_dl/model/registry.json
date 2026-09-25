@@ -1,0 +1,25 @@
+{
+  "latest": "v20260925T164424165573Z",
+  "versions": {
+    "v20260925T164424165573Z": {
+      "metrics": {
+        "test_samples": 104834,
+        "mae_log_D+1": 0.03411935080147503,
+        "nse_m3s_D+1": 0.9936579559821969,
+        "beats_persistence": {
+          "D+1": false,
+          "D+2": true,
+          "D+3": true
+        },
+        "level_hit_rate": 0.5651459103986848,
+        "level_false_alarm_ratio": 0.08455392809587217
+      },
+      "created_at": "2026-09-25T16:44:24.848788+00:00",
+      "family": "flood_dl",
+      "source": "ml/flood_dl/train.py",
+      "training_data": "real (GloFAS + ERA5 via Open-Meteo)",
+      "parameters": 43555,
+      "districts": 106
+    }
+  }
+}

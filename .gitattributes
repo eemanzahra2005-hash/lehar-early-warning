@@ -1,0 +1,9 @@
+# Force LF line endings regardless of Windows core.autocrlf. A CRLF shebang
+# line (`#!/bin/sh\r`) breaks execution inside a Linux container, which
+# matters for backend/docker-entrypoint.sh (runs as the Docker ENTRYPOINT)
+# and scripts/*.sh.
+*.sh text eol=lf
+Dockerfile text eol=lf
+
+# Windows batch scripts are conventionally CRLF.
+*.bat text eol=crlf

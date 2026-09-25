@@ -1,0 +1,116 @@
+# Backend runtime dependencies — exact pins, verified to install cleanly on Python 3.14 (Windows).
+# Regenerate by installing into a fresh .venv and running `pip freeze` if these ever need to change.
+
+# Web framework
+fastapi==0.141.1
+uvicorn[standard]==0.52.1
+
+# Data validation / settings management (reads backend/.env via pydantic-settings)
+pydantic==2.13.4
+pydantic-settings==2.15.0
+
+# Database ORM (SQLite default, PostgreSQL optional via DATABASE_URL — Phase 9)
+sqlalchemy==2.0.52
+
+# PostgreSQL driver (Phase 9). psycopg2-binary has no prebuilt wheel for
+# Python 3.14 on Windows yet (tries to build from source, needs pg_config) —
+# verified psycopg v3's binary wheel installs cleanly instead. Used only when
+# DATABASE_URL points at postgresql+psycopg://; SQLite needs no driver.
+psycopg[binary]==3.2.10
+
+# Schema migrations for the PostgreSQL path (Phase 9) — SQLite dev/test still
+# uses create_all(), see backend/app/db.py. Pinned to the version mlflow's
+# own dependency resolution already selected as compatible (mlflow-skinny
+# requires alembic<2,!=1.10.0), so this pin doesn't change what was already
+# installed transitively.
+alembic==1.19.1
+
+# HTTP client (used for outbound calls, e.g. future weather API integration)
+requests==2.34.2
+
+# Auth / JWT (used from Phase 11 security work onward)
+python-jose[cryptography]==3.5.0
+# Capped at 49.0.0 (not 50.0.0) because mlflow==3.15.1 requires
+# "cryptography<50,>=43.0.0" — downgraded when mlflow was added in Phase 7.
+cryptography==49.0.0
+
+# Machine learning
+scikit-learn==1.9.0
+# pandas is capped at 2.3.3 (not 3.x) because mlflow==3.15.1 requires
+# "pandas<3" — downgraded from 3.0.5 when mlflow was added in Phase 7;
+# full test suite re-verified green after the downgrade.
+pandas==2.3.3
+numpy==2.5.2
+joblib==1.5.3
+
+# MLOps (Phase 7): tracking/registry client for the "mlflow" docker-compose
+# service (see docker-compose.yml). Falls back to local file tracking
+# (mlruns/) when that server is unreachable — see backend/ml/pipeline.py.
+mlflow==3.15.1
+# Residuals scatter plot artifact logged by the training pipeline (Agg
+# backend, no display needed). Already a transitive pin of mlflow (<4); kept
+# as an explicit direct pin since backend/ml/pipeline.py imports it directly.
+matplotlib==3.11.1
+
+# Explainability (Phase 6): SHAP TreeExplainer over the RandomForest inside
+# the trained pipeline. numba/llvmlite are shap's own JIT-compilation
+# dependencies, pinned explicitly per CLAUDE.md rule 8. Verified to install
+# from prebuilt wheels (no source build) on Python 3.14 (Windows).
+shap==0.52.0
+numba==0.67.0
+llvmlite==0.49.0
+
+# Excel I/O (dataset import/export)
+openpyxl==3.1.5
+
+# Data validation (Phase 8): schema + statistical checks on the training
+# dataset — see backend/ml/validation.py and backend/ml/pipeline.py's
+# validate() stage. Verified to install cleanly on Python 3.14 (Windows)
+# against the already-pinned pandas==2.3.3/numpy==2.5.2 with no downgrades.
+pandera==0.32.1
+
+# Monitoring (Phase 10): auto-instruments every FastAPI request and exposes
+# GET /metrics for Prometheus (see backend/app/main.py, monitoring/prometheus.yml).
+# Custom app metrics (predictions_total, etc.) live in backend/app/metrics.py.
+# Verified to install cleanly on Python 3.14 (Windows), zero downgrades to
+# already-pinned fastapi/starlette.
+prometheus-fastapi-instrumentator==8.1.0
+prometheus-client==0.26.0
+
+# Process memory measurement (LEHAR Phase 1): the LOG_MEMORY=true startup
+# RSS line and GET /api/v1/health/deep's rss_mb field — see
+# backend/app/services/memory.py and docs/MEMORY.md. Imported lazily, inside
+# the two functions that measure, so it costs nothing until something asks.
+# Ships as a prebuilt abi3 wheel (cp37-abi3), so the one pin covers both the
+# local Python 3.14 venv and the deployed image's interpreter.
+psutil==7.1.3
+
+# Security (Phase 11): per-client-IP rate limiting (see backend/app/rate_limit.py) —
+# in-memory sliding-window store, no Redis needed for this single-process
+# local-first app. Verified to install cleanly on Python 3.14 (Windows),
+# zero downgrades to already-pinned fastapi/starlette (pip check clean).
+slowapi==0.1.10
+
+# Reports (Phase 12): PDF generation for GET /api/v1/report?format=pdf (see
+# backend/app/services/report_pdf.py). Verified to install cleanly on
+# Python 3.14 (Windows) with zero downgrades to any already-pinned package
+# (pillow/charset-normalizer were already satisfied transitively) — pip
+# check clean. Charts embedded in the PDF are rendered with the
+# already-pinned matplotlib (Agg backend, same as ml/pipeline.py's residuals
+# plot); the Excel report (format=xlsx, the default) uses the already-pinned
+# openpyxl instead, including its native chart objects — no extra dependency
+# needed for that path.
+reportlab==4.4.4
+
+# Flood lead-time model inference (LEHAR Phase 2.5): loads the exported ONNX
+# graph for GET /api/v1/flood/forecast/{district} and the FLOOD_FORECAST
+# alert rule. This is the SERVING half of that feature — PyTorch trains the
+# model and is pinned in backend/requirements-ml.txt alone, never here and
+# never in the image (CLAUDE.md rule 11: ~200MB against a 512MB ceiling).
+# Weighed against that ceiling before being added: the import is deferred
+# until the first forecast is actually served (app/services/flood_forecast.py),
+# and FLOOD_DL_ENABLED defaults to false, so a deployment that does not use
+# the feature pays no resident memory for it at all. Ships as a prebuilt
+# cp314 wheel; its numpy/protobuf/packaging requirements are already
+# satisfied by the pins above, so it adds only flatbuffers.
+onnxruntime==1.30.0

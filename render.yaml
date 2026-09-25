@@ -1,0 +1,127 @@
+# Render Blueprint (Phase 13) — deploy files PREPARED, not executed. See
+# docs/DEPLOY_RENDER.md for the click-by-click walkthrough. Per CLAUDE.md,
+# nothing in this repo pushes to GitHub or deploys anywhere automatically —
+# this file only exists so a later, manual "New Blueprint" on Render has
+# something correct to read.
+#
+# Builds backend/Dockerfile exactly as docker-compose.yml's "api" service
+# does locally (same entrypoint: alembic upgrade head, then uvicorn bound
+# to $PORT) — Render sets PORT itself, and app/db.py's
+# _normalize_postgres_scheme() rewrites Render's bare "postgres://"
+# DATABASE_URL to "postgresql+psycopg://" automatically, so no manual
+# connection-string edits are needed.
+
+databases:
+  - name: lehar-db
+    plan: free
+    databaseName: smart_irrigation
+    user: irrigation
+
+services:
+  - type: web
+    name: lehar-api
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: .
+    plan: free
+    healthCheckPath: /api/v1/health
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: lehar-db
+          property: connectionString
+      # Secrets — set manually in the Render dashboard after the first
+      # deploy (sync: false means Render won't overwrite whatever value is
+      # set there, and never expects one to be committed here).
+      - key: JWT_SECRET
+        sync: false
+      - key: LLM_CLOUD_API_KEY
+        sync: false
+      # Cloud-only on Render: there's no local Ollama to fall back to on a
+      # hosted machine, so "hybrid"'s local fallback would just fail — see
+      # docs/DEPLOY_RENDER.md for the tradeoff (assistant unavailable if no
+      # LLM_CLOUD_API_KEY is set, same as CLAUDE.md rule 4's honesty
+      # standard: never fabricate a reply when there's no real provider).
+      - key: LLM_PROVIDER
+        value: cloud
+      # Phase 13.1 — 512MB-safe deployment profile (see PROGRESS.md, this
+      # phase's entry, for the real before/after memory measurements that
+      # justify every value below).
+      #
+      # See backend/app/config.py's low_memory_mode docstring: skips the
+      # eager SHAP warm-up at boot, mmaps the model file, and caps SHAP to
+      # models with <= LOW_MEMORY_SHAP_MAX_ESTIMATORS estimators (the
+      # compact model below stays under it — explanations keep working).
+      - key: LOW_MEMORY_MODE
+        value: "true"
+      # A RAM-constrained host reports its real environment, not the local
+      # dev default — GET /api/v1/health's `environment` field was
+      # incorrectly showing "local" on the live deployment before this.
+      - key: ENVIRONMENT
+        value: production
+      # Explicit, not implicit — see backend/docker-entrypoint.sh. A second
+      # uvicorn worker would double every one of the memory costs measured
+      # in PROGRESS.md's Phase 13.1 diagnosis.
+      - key: WEB_CONCURRENCY
+        value: "1"
+      # Pins the COMPACT DEPLOYMENT MODEL (LEHAR Phase 1) — trained with
+      # `python backend/ml/pipeline.py --compact` (n_estimators=60,
+      # max_depth=10, full train split) — instead of "latest" (the full
+      # 120-tree model this repo's local production pointer still uses;
+      # CLAUDE.md rule 1: additive, never replaces what local dev already
+      # had). 60 trees is at the LOW_MEMORY_SHAP_MAX_ESTIMATORS cap, so
+      # per-prediction SHAP explanations keep working here.
+      #
+      # Real, gate-evaluated metrics (measured on the held-out test split,
+      # SYNTHETIC research data — CLAUDE.md rules 4 and 13), recorded in
+      # backend/ml/model/registry.json and reproducible with
+      # `python scripts/check_deployment_models.py`:
+      #   this model (60 trees, 7.8MB):  MAE 0.2513  RMSE 0.3313  R2 0.9958
+      #   local "latest" (120t, 15.7MB): MAE 0.2496  RMSE 0.3286  R2 0.9959
+      # See docs/MEMORY.md for the measured memory numbers behind the choice.
+      - key: MODEL_VERSION
+        value: v20260923T212705208535Z
+      # glibc keeps freed memory in per-thread arenas (up to 8x the CPU
+      # count by default) rather than returning it to the OS. Capping arenas
+      # at 2 costs nothing at one worker and measurably lowers the RSS
+      # retained after a /predict burst — see docs/MEMORY.md.
+      - key: MALLOC_ARENA_MAX
+        value: "2"
+      # Render free has no shell, so backend/docker-entrypoint.sh applies
+      # Alembic migrations itself before starting uvicorn.
+      - key: RUN_MIGRATIONS
+        value: "true"
+      # Writes one real psutil RSS reading to the deploy log at startup —
+      # the boot-time baseline for a service with a hard 512MB ceiling.
+      # GET /api/v1/health/deep reports current RSS at any time.
+      - key: LOG_MEMORY
+        value: "true"
+      # Flood lead-time model (LEHAR Phase 2.5) — OFF on Render, stated
+      # explicitly rather than left to the default so the deployed posture is
+      # visible in this file. Enabling it costs a measured +26.8MB RSS (the
+      # lazy onnxruntime import plus one ONNX session — see docs/MEMORY.md),
+      # which the 196MB of headroom can afford; it is off because the feature
+      # is new and a forecast-driven farmer alert should be switched on
+      # deliberately, not by default. Requires a registered model under
+      # backend/ml/flood_dl/model/ as well — with none, the endpoint answers
+      # 503 with the reason rather than inventing a forecast.
+      - key: FLOOD_DL_ENABLED
+        value: "false"
+      # CORS for the separate Next.js Early-Warning Console (LEHAR Phase 5),
+      # which is NOT same-origin with this API. Comma-separated; merged with
+      # CORS_ORIGINS by app/config.py's cors_origins_list. Replace the
+      # placeholder with the console's real Vercel domain once it exists —
+      # an origin listed here that doesn't exist yet simply never matches.
+      # Auth is bearer-token based, so no cookie/SameSite concerns; see
+      # docs/API_AUTH.md.
+      - key: FRONTEND_ORIGINS
+        value: "https://lehar-console.vercel.app,http://localhost:3000"
+      # Render auto-translates this service's envVars into Docker build
+      # ARGs of the same name (see backend/Dockerfile, docs/DEPLOY_RENDER.md)
+      # — this one drops every backend/ml/model/<version>/ directory except
+      # the one MODEL_VERSION above actually points at, keeping the built
+      # image leaner. Local `docker compose build`/`up` never sets this, so
+      # every version still ships there (all local promote/rollback history
+      # stays testable) — this only changes what Render's build produces.
+      - key: PRUNE_MODEL_VERSIONS
+        value: "true"

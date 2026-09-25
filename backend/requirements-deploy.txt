@@ -1,0 +1,119 @@
+# Deployment (serving-only) runtime dependencies — LEHAR Phase 1.
+#
+# This is requirements.txt MINUS the two packages that only the TRAINING/
+# MLOps path ever needs, for one reason: the deployed API runs inside a hard
+# 512MB RAM ceiling on Render's free tier (CLAUDE.md rule 11), and the
+# surest way to guarantee a heavyweight dependency is never imported by the
+# API process is for it not to be installed there at all.
+#
+# requirements.txt itself is UNCHANGED and stays the local/dev/CI source of
+# truth (CLAUDE.md rule 1 — additive, never a rewrite): training, the
+# quality gate, MLflow tracking and the full test suite all still run
+# locally exactly as before. Only backend/Dockerfile installs this file.
+#
+# Excluded here, and why:
+#   - mlflow            Tracking/registry client used by backend/ml/pipeline.py
+#                       (training) and app/services/mlflow_registry.py's
+#                       best-effort "champion" alias update. Neither runs on
+#                       the serving path: app/services/ml_model.py resolves
+#                       versions through backend/ml/registry.py, which is
+#                       plain registry.json parsing. mlflow_registry.py already
+#                       imports mlflow lazily AND checks server reachability
+#                       first, so its absence degrades to the same logged
+#                       warning an unreachable server produces — it can never
+#                       fail a request. Enforced by
+#                       backend/tests/test_no_heavy_imports.py.
+#   - pandera           Training-dataset schema validation (backend/ml/validation.py,
+#                       imported only by backend/ml/pipeline.py's validate()
+#                       stage). The API never validates a training dataset.
+#   - torch / onnx      LEHAR Phase 2.5's flood lead-time model is TRAINED with
+#                       PyTorch and exported to ONNX (backend/ml/flood_dl/,
+#                       pinned in backend/requirements-ml.txt). The API runs
+#                       the exported ~170KB graph with onnxruntime instead,
+#                       which IS pinned below — a ~200MB training framework has
+#                       no business inside a 512MB serving process.
+#                       app/services/flood_forecast.py imports onnxruntime
+#                       lazily and FLOOD_DL_ENABLED defaults to false, so the
+#                       feature costs nothing until it is switched on.
+#                       Enforced by backend/tests/test_no_heavy_imports.py.
+#
+# NOT excluded, despite being large — these are real serving features:
+#   - shap/numba/llvmlite   per-prediction explanations (app/services/explain.py)
+#   - matplotlib/reportlab  PDF reports (app/services/report_pdf.py)
+#   - openpyxl              Excel reports (app/services/report_xlsx.py)
+#   - scikit-learn/pandas/numpy/joblib   loading and running the model itself
+#
+# Keep this file in sync with requirements.txt whenever a runtime dependency
+# is added there — same exact `==` pins, per CLAUDE.md rule 8. The pins below
+# are copied verbatim from requirements.txt; two comments there explain caps
+# (cryptography<50, pandas<3) that mlflow originally imposed — those pins are
+# kept identical here on purpose, so the deployed image runs the exact
+# versions the test suite ran against rather than a silently different set.
+
+# Web framework
+fastapi==0.141.1
+uvicorn[standard]==0.52.1
+
+# Data validation / settings management (reads backend/.env via pydantic-settings)
+pydantic==2.13.4
+pydantic-settings==2.15.0
+
+# Database ORM (SQLite default, PostgreSQL via DATABASE_URL — Postgres on Render)
+sqlalchemy==2.0.52
+psycopg[binary]==3.2.10
+
+# Schema migrations — the container entrypoint runs `alembic upgrade head`
+# before uvicorn when RUN_MIGRATIONS=true (Render free has no shell access,
+# so this is the only way migrations get applied there).
+alembic==1.19.1
+
+# HTTP client (Open-Meteo weather/flood, cloud LLM)
+requests==2.34.2
+
+# Auth / JWT — bearer tokens, see docs/API_AUTH.md
+python-jose[cryptography]==3.5.0
+cryptography==49.0.0
+
+# Machine learning — loading and serving the trained pipeline
+scikit-learn==1.9.0
+pandas==2.3.3
+numpy==2.5.2
+joblib==1.5.3
+
+# Explainability (per-prediction SHAP). Skipped at runtime for models over
+# LOW_MEMORY_SHAP_MAX_ESTIMATORS when LOW_MEMORY_MODE=true — but the compact
+# deployment model stays under that cap, so explanations work on Render.
+shap==0.52.0
+numba==0.67.0
+llvmlite==0.49.0
+
+# Reports: PDF (reportlab + matplotlib charts) and Excel (openpyxl)
+reportlab==4.4.4
+matplotlib==3.11.1
+openpyxl==3.1.5
+
+# Monitoring: GET /metrics for Prometheus
+prometheus-fastapi-instrumentator==8.1.0
+prometheus-client==0.26.0
+
+# Per-client-IP rate limiting (in-memory, single process)
+slowapi==0.1.10
+
+# Process memory measurement (LEHAR Phase 1): the startup RSS log
+# (LOG_MEMORY=true) and GET /api/v1/health/deep's rss_mb field —
+# see app/services/memory.py and docs/MEMORY.md. Both report a real reading
+# or null; neither ever estimates.
+psutil==7.1.3
+
+# Flood lead-time model inference (LEHAR Phase 2.5): loads the exported ONNX
+# graph for GET /api/v1/flood/forecast/{district} and the FLOOD_FORECAST
+# alert rule. This is the SERVING half of that feature — PyTorch trains the
+# model and is pinned in backend/requirements-ml.txt alone, never here and
+# never in the image (CLAUDE.md rule 11: ~200MB against a 512MB ceiling).
+# Weighed against that ceiling before being added: the import is deferred
+# until the first forecast is actually served (app/services/flood_forecast.py),
+# and FLOOD_DL_ENABLED defaults to false, so a deployment that does not use
+# the feature pays no resident memory for it at all. Ships as a prebuilt
+# cp314 wheel; its numpy/protobuf/packaging requirements are already
+# satisfied by the pins above, so it adds only flatbuffers.
+onnxruntime==1.30.0

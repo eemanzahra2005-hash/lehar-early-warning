@@ -1,0 +1,48 @@
+# Deep-learning TRAINING dependencies — LEHAR Phase 2.5.
+#
+# Install on top of requirements.txt, and only when you intend to TRAIN or
+# EXPORT the flood lead-time model (backend/ml/flood_dl/):
+#
+#   .venv\Scripts\python -m pip install -r backend\requirements-ml.txt
+#
+# ** Nothing in this file is ever installed into the deployed image. **
+#
+# backend/Dockerfile installs requirements-deploy.txt and nothing else, and
+# backend/tests/test_deployment_image.py asserts that `torch` never appears
+# in it. The reason is CLAUDE.md rule 11: the Render free tier gives this API
+# 512 MB of RAM, and the CPU build of PyTorch is a ~200 MB install whose
+# import alone costs well over a hundred megabytes — for a model the API can
+# run without it.
+#
+# The serving path instead loads the EXPORTED ONNX graph (~170 KB) with
+# onnxruntime, which is pinned in requirements.txt / requirements-deploy.txt
+# alongside the other runtime dependencies. See app/services/flood_forecast.py
+# and docs/FLOOD_DL.md. backend/tests/test_no_heavy_imports.py boots the app
+# in a fresh subprocess and asserts `torch` never lands in sys.modules — torch
+# IS installed in the local dev venv (by this file), which is what makes that
+# assertion a real test rather than a vacuous one.
+#
+# Exact pins, per CLAUDE.md rule 8, all verified to install from prebuilt
+# wheels (no source build) on Python 3.14 / Windows — see docs/FLOOD_DL.md
+# for the wheel check that established this.
+
+# The network itself (ml/flood_dl/model.py) and its training loop
+# (ml/flood_dl/train.py). The PyPI wheel for Windows is the CPU build:
+# `pip install torch==2.14.0` resolves to torch-2.14.0+cpu, no CUDA, which is
+# all this ~44k-parameter model needs — it trains in under two minutes on a
+# laptop CPU.
+torch==2.14.0
+
+# Required by torch.onnx.export (ml/flood_dl/export.py): torch's TorchScript
+# exporter imports `onnx` to serialise the graph and raises
+# "Module onnx is not installed!" without it — verified by blocking the
+# import. `onnxscript` is NOT needed: it is used only by torch's newer
+# dynamo-based exporter, and export.py passes dynamo=False.
+onnx==1.23.0
+
+# Parquet I/O for the downloaded history: scripts/data/fetch_flood_history.py
+# writes data/flood_history/<district_code>.parquet and ml/flood_dl/dataset.py
+# reads it. Already present transitively as an mlflow dependency, pinned here
+# explicitly at that same version because these two modules import it
+# directly and must not rely on a transitive pull (CLAUDE.md rule 8).
+pyarrow==25.0.1

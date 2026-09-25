@@ -1,0 +1,24 @@
+# Prometheus scrape configuration (Phase 10, extended Phase 13). See
+# docs/MONITORING.md.
+#
+# Two possible ways to run the FastAPI app, both scraped here — Prometheus
+# tolerates one target being down, it just shows as `up == 0` for that
+# target in http://127.0.0.1:9090/targets without affecting the other:
+#   - "api:8000"                — docker-compose.yml's "api" service
+#     (Phase 13's full-stack `docker compose up`), reached by its Compose
+#     service name over the shared Docker network.
+#   - "host.docker.internal:8000" — a separately-run HOST dev server
+#     (`.venv\Scripts\uvicorn app.main:app --reload --app-dir backend`),
+#     reached via the special Docker-to-host DNS name (mapped for
+#     Prometheus explicitly via docker-compose.yml's extra_hosts:
+#     host-gateway — native on Docker Desktop, required on Linux Engine).
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: "smart-irrigation-api"
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["api:8000", "host.docker.internal:8000"]

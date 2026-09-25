@@ -1,0 +1,26 @@
+[tool.ruff]
+# Backend only — frontend/ is vanilla JS (CLAUDE.md rule 7), nothing else to lint.
+src = ["backend"]
+line-length = 120
+target-version = "py314"
+extend-exclude = ["backend/migrations/versions"]
+
+[tool.ruff.lint]
+# Minimal, pragmatic rule set for a research/demo project (CLAUDE.md rule 9
+# — clarity over cleverness): pyflakes (F) for real bugs (unused imports,
+# undefined names), pycodestyle errors (E) for the usual style baseline,
+# and isort (I) since the codebase already keeps imports tidily grouped.
+select = ["E", "F", "I"]
+ignore = [
+    "E501", # line-length is enforced by the formatter/line-length setting above, not the linter
+]
+
+[tool.ruff.lint.per-file-ignores]
+# Test files intentionally shadow fixture names as parameters (pytest
+# convention) and sometimes import modules only for their side effects.
+"backend/tests/*" = ["F401"]
+# conftest.py must set DB_PATH/JWT_SECRET/etc. via os.environ BEFORE
+# importing anything from `app` (those modules read env at import time via
+# pydantic-settings) — the resulting non-top-of-file imports are deliberate,
+# not an oversight, see the module docstring.
+"backend/tests/conftest.py" = ["E402"]

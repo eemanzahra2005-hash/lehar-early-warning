@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LEHAR — Level-based Early-warning for Hydrological &amp; Agricultural Risk</title>
+  <meta name="description" content="LEHAR — Level-based Early-warning for Hydrological &amp; Agricultural Risk — research-grade early-warning and irrigation decision support for Pakistani agriculture. All data is synthetic." />
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%232a78d6'%3E%3Cpath d='M12 2.5C12 2.5 5.5 10.2 5.5 14.6A6.5 6.5 0 0 0 18.5 14.6C18.5 10.2 12 2.5 12 2.5Z'/%3E%3C/svg%3E" />
+  <link rel="stylesheet" href="css/fonts.css" />
+  <link rel="stylesheet" href="css/theme.css" />
+  <link rel="stylesheet" href="css/layout.css" />
+  <link rel="stylesheet" href="css/components.css" />
+  <!-- Vendored locally, no CDN — see frontend/vendor/leaflet/LICENSE -->
+  <link rel="stylesheet" href="vendor/leaflet/leaflet.css" />
+  <script src="js/theme-init.js"></script>
+</head>
+<body>
+  <div class="app-shell">
+    <div class="scrim" id="scrim"></div>
+
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar__brand">
+        <svg class="sidebar__brand-mark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M12 2.5C12 2.5 5.5 10.2 5.5 14.6A6.5 6.5 0 0 0 18.5 14.6C18.5 10.2 12 2.5 12 2.5Z" />
+        </svg>
+        <span class="sidebar__brand-text">LEHAR<small>Early-Warning &amp; Advisory</small></span>
+      </div>
+      <nav class="nav" id="nav"></nav>
+      <div class="sidebar__footer-note">Research prototype — synthetic data.</div>
+    </aside>
+
+    <header class="topbar">
+      <button type="button" class="btn btn--icon btn--ghost topbar__hamburger" id="hamburger" aria-label="Toggle navigation"></button>
+
+      <div class="topbar__group">
+        <select class="select" id="district-select" aria-label="Selected district"></select>
+      </div>
+
+      <div class="topbar__spacer"></div>
+
+      <div class="topbar__group">
+        <button type="button" class="btn btn--ghost btn--sm cmdk-trigger" id="cmdk-trigger" aria-label="Open command palette">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <span>Search</span>
+          <kbd>Ctrl K</kbd>
+        </button>
+        <span class="status-chip" id="api-status-chip">
+          <span class="status-chip__dot"></span>
+          <span id="api-status-label">Checking…</span>
+        </span>
+        <button type="button" class="btn btn--icon btn--ghost" id="theme-toggle" aria-label="Toggle theme"></button>
+        <div id="auth-area"></div>
+      </div>
+    </header>
+
+    <main class="main" id="main">
+      <div class="view" id="view-root"></div>
+    </main>
+
+    <footer class="app-footer">Research prototype — synthetic data. Not agronomic advice.</footer>
+  </div>
+
+  <!-- Vendored locally, no CDN — see frontend/vendor/chartjs/LICENSE.md -->
+  <script src="vendor/chartjs/chart.umd.js"></script>
+  <!-- Vendored locally, no CDN — see frontend/vendor/leaflet/LICENSE -->
+  <script src="vendor/leaflet/leaflet.js"></script>
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>

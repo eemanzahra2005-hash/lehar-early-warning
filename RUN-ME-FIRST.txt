@@ -1,0 +1,115 @@
+LEHAR — Level-based Early-warning for Hydrological & Agricultural Risk
+======================================================================
+
+WHAT THIS IS
+This is a research/demo web app that recommends how much to irrigate a
+field, using live weather data and a machine-learning model. It runs
+entirely on YOUR computer — nothing is uploaded anywhere, and no account
+or payment is needed to try it.
+
+You do not need to know anything about Python, Docker, or programming to
+run this. Just pick ONE of the two paths below and double-click a file.
+
+
+THE EASY PATH (recommended if you're not sure)
+------------------------------------------------
+1. Install Docker Desktop (free):
+       https://www.docker.com/products/docker-desktop/
+   Open it and wait until it says "Docker Desktop is running" (this can
+   take a minute the first time).
+
+2. Double-click START.bat in this folder.
+
+3. Wait. Your browser will open automatically to the app when it's ready.
+
+That's it — START.bat sets up everything else by itself (no files to edit,
+no passwords to invent).
+
+
+THE NO-DOCKER PATH (if you'd rather not install Docker)
+------------------------------------------------
+1. Install Python 3.12 (free):
+       https://www.python.org/downloads/
+   On the FIRST install screen, tick the box that says
+   "Add python.exe to PATH" before clicking Install — this step matters.
+
+2. Double-click STARTUP-NO-DOCKER.bat in this folder.
+
+3. Wait. Your browser will open automatically to the app when it's ready.
+
+This mode uses a simple built-in database file instead of a separate
+database program — everything else about the app works the same way.
+
+Tip: if you double-click START.bat and don't have Docker Desktop installed
+or running, it automatically switches to this same no-Docker mode for you
+— you don't have to choose in advance.
+
+
+WHAT TO EXPECT ON FIRST RUN
+------------------------------------------------
+The FIRST time you start the app (either path), it needs to download or
+install some things, which can take a few minutes — you'll see plain-
+English progress messages the whole time ("Installing required packages…",
+"Loading model…"). Every run after the first starts in well under a
+minute. Your browser opens automatically as soon as the app is ready — you
+don't need to keep refreshing it.
+
+
+HOW TO STOP THE APP
+------------------------------------------------
+Double-click STOP.bat. This works no matter which of the two paths above
+you used. Your data is kept — the next time you double-click START.bat (or
+STARTUP-NO-DOCKER.bat), you'll pick up right where you left off.
+
+
+OPTIONAL: THE AI ASSISTANT
+------------------------------------------------
+There's an optional chat assistant (bottom-right chat button) that can
+answer questions about the weather/irrigation data on screen. It's OFF by
+default — the rest of the app works completely normally without it.
+
+AI assistant setup:
+1. Get a free key: https://console.groq.com -> "API Keys" -> "Create API Key".
+2. Paste it when START.bat / STARTUP-NO-DOCKER.bat asks for it on first run
+   (the key is never shown back on screen as you paste it) — or add it
+   yourself later in ONE place: the `LLM_CLOUD_API_KEY=` line in the file
+   `backend\.env` (inside the "backend" folder). That one file works for
+   BOTH paths above, with or without Docker — there is no second copy to
+   keep in sync. After editing it, double-click STOP.bat and then START.bat
+   so the app picks up the key.
+3. Alternative (no account, fully offline): install Ollama from
+   https://ollama.com, then run `ollama pull llama3.2:3b` in a terminal.
+
+Without either one, only the chat assistant stays off — every other page
+still works normally. See docs/USER-GUIDE.md if you'd like more detail.
+
+
+TROUBLESHOOTING
+------------------------------------------------
+- Nothing happens / an [ERROR] message appears: read the message in the
+  window — it names the exact fix (e.g. "install Python" with a link).
+- The app didn't open in your browser: go to http://localhost:8000
+  yourself once the window says "Ready!".
+- The chat assistant still says "offline" after you added a key: make sure
+  the key is on the `LLM_CLOUD_API_KEY=` line in `backend\.env` (NOT the
+  `.env` file next to START.bat — that one only holds database/monitoring
+  passwords, and a key put there is ignored), then double-click STOP.bat
+  and START.bat again.
+- Something still isn't working: check RUN-ME-FIRST.txt's path above was
+  followed exactly, then see the "docs" folder in this package for more
+  detail, or the log files created next to START.bat/STARTUP-NO-DOCKER.bat
+  (lehar-setup.log, lehar-server.log).
+
+
+macOS / Linux
+------------------------------------------------
+Run ./start.sh instead (Docker Desktop required; chmod +x start.sh first
+if needed). Stop with `docker compose down`.
+
+
+More detail: see README.md, docs/USER-GUIDE.md (a tour of every page), and
+the rest of the docs/ folder in this package.
+
+All data in this application is SYNTHETIC, generated for demonstration —
+not real agricultural or hydrological data. See docs/USER-GUIDE.md for
+details.

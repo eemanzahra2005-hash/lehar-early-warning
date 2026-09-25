@@ -1,0 +1,14 @@
+# Provisioned Prometheus data source (Phase 10) — no manual "Add data
+# source" click-through needed. "prometheus" here is the Compose service
+# name, resolved via Docker's internal network (not localhost/host.docker.internal
+# — Grafana and Prometheus are two containers on the same Compose network).
+apiVersion: 1
+
+datasources:
+  - name: Prometheus
+    uid: prometheus
+    type: prometheus
+    access: proxy
+    url: http://prometheus:9090
+    isDefault: true
+    editable: false

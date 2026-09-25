@@ -1,0 +1,65 @@
+# Build context for backend/Dockerfile is the PROJECT ROOT (needs both
+# backend/ and frontend/ — see the Dockerfile's header comment for the
+# exact build command). Docker only honors a .dockerignore at the context
+# root, hence this file lives here rather than under backend/.
+#
+# IMPORTANT: unlike .gitignore, Docker's .dockerignore matcher does NOT
+# treat a bare pattern (e.g. "*.env", "__pycache__/") as recursive — it only
+# matches at the context ROOT. Verified with a minimal repro build during
+# Phase 13: "*.env" let the real backend/.env (containing the actual
+# JWT_SECRET and LLM_CLOUD_API_KEY) get COPY'd straight into the image, and
+# "*.db" similarly let backend/data/app.db ship. Every pattern below that
+# needs to match at any depth uses an explicit "**/" prefix.
+
+# Virtual environment — rebuilt fresh inside the image from requirements.txt
+.venv/
+venv/
+env/
+
+# Git metadata — never needed inside the image
+.git/
+.gitignore
+
+# Secrets — real .env files are never committed and must never be baked
+# into an image either; config comes from env vars / --env-file at `docker run`
+**/.env
+**/*.env
+!**/.env.example
+
+# Databases — the container creates its own fresh SQLite DB on startup
+# (init_db(), see app/db.py); a developer's local data.db must never ship.
+**/*.db
+**/*.sqlite
+**/*.sqlite3
+
+# MLOps local tracking store — large, and irrelevant to serving the app
+**/mlruns/
+**/mlartifacts/
+
+# Python bytecode / caches
+**/__pycache__/
+**/*.py[cod]
+**/.pytest_cache/
+**/.ruff_cache/
+**/.mypy_cache/
+**/.coverage
+**/htmlcov/
+
+# Test suite — never needed to SERVE the app; CI runs pytest separately
+# (.github/workflows/ci.yml), never inside this image (Phase 13.1).
+backend/tests/
+
+# Editors / OS
+**/.vscode/
+**/.idea/
+**/.DS_Store
+**/Thumbs.db
+
+# Raw training CSV — only backend/ml/train_model.py (a training-time
+# script, never run inside the serving container) reads this; the already-
+# trained model artifacts under backend/ml/model/ are copied in instead, so
+# skipping the ~6MB CSV keeps the image leaner with no loss of function.
+data/*.csv
+
+# Claude Code / editor session state — never relevant to the image
+.claude/

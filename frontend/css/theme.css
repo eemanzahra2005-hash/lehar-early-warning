@@ -1,0 +1,352 @@
+/* ==========================================================================
+   Design tokens — LIGHT is the default (bare :root); dark applies via the
+   system prefers-color-scheme (before JS runs, avoiding a flash) and via
+   [data-theme="dark"] (explicit user choice, always wins). Everything
+   downstream (layout.css, components.css, views, charts.js) reads only these
+   custom properties, never a hard-coded color, so theme switching is instant.
+
+   Phase 7.5 palette — pre-validated, colorblind-safe, contrast-checked for
+   both surfaces. Do not substitute these values; see PROGRESS.md Phase 7.5.
+   ========================================================================== */
+
+:root {
+  /* --- Surfaces & structure (light, default) --- */
+  --bg: #f9f9f7;
+  --surface: #fcfcfb;
+  --surface-2: #f2f2ef;
+  --surface-hover: #ebebe7;
+  --border: rgba(11, 11, 11, 0.10);
+  --border-strong: rgba(11, 11, 11, 0.18);
+  --grid: #e1e0d9;
+  --axis: #c3c2b7;
+  --shadow-sm: 0 1px 2px rgba(11, 11, 11, 0.06);
+  --shadow-md: 0 4px 20px rgba(11, 11, 11, 0.08);
+
+  /* --- Text --- */
+  --text-primary: #0b0b0b;
+  --text-secondary: #52514e;
+  --text-muted: #898781; /* same in both themes, per palette spec */
+  --text-on-accent: #ffffff;
+
+  /* --- Brand accent: one restrained blue, fits water/irrigation --- */
+  --primary: #2a78d6;
+  --primary-strong: #256abf; /* hover = one step darker */
+  --primary-soft: rgba(42, 120, 214, 0.12);
+
+  /* Legacy semantic token names kept so existing chip/kpi/gauge/toast
+     modifiers (chip--emerald, kpi--sky, etc.) repoint automatically without
+     touching markup — values now come from the validated status/brand
+     palette, not the old bright dark-terminal hues.
+       --emerald -> status good (green)
+       --sky     -> brand blue (unifies links/focus/info with --primary)
+       --amber   -> status warning
+       --red     -> status critical / destructive */
+  --emerald: #0ca30c;
+  --emerald-strong: #0a8a0a;
+  --emerald-soft: rgba(12, 163, 12, 0.12);
+  --sky: var(--primary);
+  --sky-strong: var(--primary-strong);
+  --sky-soft: var(--primary-soft);
+  --amber: #fab219;
+  --amber-soft: rgba(250, 178, 25, 0.16);
+  --red: #d03b3b;
+  --red-soft: rgba(208, 59, 59, 0.12);
+
+  /* --- Status colors — reserved for state only, never chart series --- */
+  --status-good: #0ca30c;
+  --status-warning: #fab219;
+  --status-serious: #ec835a;
+  --status-critical: #d03b3b;
+
+  /* --- Delta indicators (KPI up/down), theme-specific --- */
+  --delta-up-good: #006300;
+  --delta-down-bad: var(--status-critical);
+
+  /* --- AA-safe variants for status colors used as small inline TEXT
+     (not on a soft-tinted pill background) — the raw accents fail 4.5:1 on
+     light surfaces (measured: amber 1.6-1.8:1, emerald 2.8-3.3:1). Chips/
+     badges/borders/icons keep using --amber/--emerald/--red directly; only
+     plain-text utility classes (.text-amber etc.) use these. --- */
+  --amber-text: #8a5a00;
+  --emerald-text: #0a7a0a;
+  --red-text: var(--red); /* already >=4.5:1 on light surfaces */
+
+  /* --- Chart categorical series — fixed order, slots 1-8, never cycled --- */
+  --chart-1: #2a78d6; /* blue */
+  --chart-2: #eb6834; /* orange */
+  --chart-3: #1baf7a; /* aqua */
+  --chart-4: #eda100; /* yellow */
+  --chart-5: #e87ba4; /* magenta */
+  --chart-6: #008300; /* green */
+  --chart-7: #4a3aa7; /* violet */
+  --chart-8: #e34948; /* red */
+
+  /* --- Sequential ramp (magnitude) — irrigation choropleth/heatmap, single
+     blue hue light->dark, near-zero to max. Same values in both themes: a
+     map fill isn't page-themed content. --- */
+  --seq-irrigation-1: #cde2fb;
+  --seq-irrigation-2: #6da7ec;
+  --seq-irrigation-3: #3987e5;
+  --seq-irrigation-4: #184f95;
+  --seq-irrigation-5: #0d366b;
+
+  /* --- Sequential ramp — Flood Watch choropleth, warm amber -> deep red,
+     visually distinct from the blue irrigation ramp. --- */
+  --seq-flood-1: #ffe8b3;
+  --seq-flood-2: #ffc067;
+  --seq-flood-3: #f68a4d;
+  --seq-flood-4: #e2573c;
+  --seq-flood-5: #d03b3b;
+
+  /* --- Map "no data" fill, neutral --- */
+  --nodata-fill: #e1e0d9;
+  --nodata-border: #c3c2b7;
+
+  /* --- Typography: one professional UI sans everywhere; hierarchy via
+     weight/size only. Mono reserved for code-like values (see .code). --- */
+  --font-body: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  --font-heading: var(--font-body);
+  --font-mono: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Consolas, monospace;
+
+  /* --- Radii --- */
+  --radius-sm: 8px;
+  --radius-md: 10px;
+  --radius-lg: 12px;
+  --radius-full: 999px;
+
+  /* --- Spacing scale --- */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+
+  /* --- Motion --- */
+  --transition-fast: 150ms ease;
+  --transition: 200ms ease;
+
+  /* --- Shell dimensions --- */
+  --sidebar-width: 248px;
+  --sidebar-width-collapsed: 76px;
+  --topbar-height: 64px;
+  --footer-height: 40px;
+}
+
+/* System dark preference, before JS has set data-theme (avoids a flash) —
+   the :not([data-theme="light"]) guard lets an explicit light choice win
+   even on a dark OS. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0d0d0d;
+    --surface: #1a1a19;
+    --surface-2: #141413;
+    --surface-hover: #201f1e;
+    --border: rgba(255, 255, 255, 0.10);
+    --border-strong: rgba(255, 255, 255, 0.18);
+    --grid: #2c2c2a;
+    --axis: #383835;
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.35);
+    --shadow-md: 0 4px 24px rgba(0, 0, 0, 0.45);
+
+    --text-primary: #ffffff;
+    --text-secondary: #c3c2b7;
+    --text-muted: #898781;
+    --text-on-accent: #ffffff;
+
+    --primary: #3987e5;
+    --primary-strong: #2a78d6;
+    --primary-soft: rgba(57, 135, 229, 0.16);
+
+    --emerald: #0ca30c;
+    --emerald-strong: #0a8a0a;
+    --emerald-soft: rgba(12, 163, 12, 0.16);
+    --sky: var(--primary);
+    --sky-strong: var(--primary-strong);
+    --sky-soft: var(--primary-soft);
+    --amber: #fab219;
+    --amber-soft: rgba(250, 178, 25, 0.18);
+    --red: #d03b3b;
+    --red-soft: rgba(208, 59, 59, 0.18);
+
+    --delta-up-good: #0ca30c;
+
+    /* Raw accents already pass AA on dark surfaces, except red (3.6-4.0:1 —
+       swap for the brighter chart-8 red used elsewhere in dark mode). */
+    --amber-text: var(--amber);
+    --emerald-text: var(--emerald);
+    --red-text: #e66767;
+
+    --chart-1: #3987e5;
+    --chart-2: #d95926;
+    --chart-3: #199e70;
+    --chart-4: #c98500;
+    --chart-5: #d55181;
+    --chart-6: #008300;
+    --chart-7: #9085e9;
+    --chart-8: #e66767;
+
+    --nodata-fill: #2c2c2a;
+    --nodata-border: #383835;
+  }
+}
+
+:root[data-theme="dark"] {
+  --bg: #0d0d0d;
+  --surface: #1a1a19;
+  --surface-2: #141413;
+  --surface-hover: #201f1e;
+  --border: rgba(255, 255, 255, 0.10);
+  --border-strong: rgba(255, 255, 255, 0.18);
+  --grid: #2c2c2a;
+  --axis: #383835;
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.35);
+  --shadow-md: 0 4px 24px rgba(0, 0, 0, 0.45);
+
+  --text-primary: #ffffff;
+  --text-secondary: #c3c2b7;
+  --text-muted: #898781;
+  --text-on-accent: #ffffff;
+
+  --primary: #3987e5;
+  --primary-strong: #2a78d6;
+  --primary-soft: rgba(57, 135, 229, 0.16);
+
+  --emerald: #0ca30c;
+  --emerald-strong: #0a8a0a;
+  --emerald-soft: rgba(12, 163, 12, 0.16);
+  --sky: var(--primary);
+  --sky-strong: var(--primary-strong);
+  --sky-soft: var(--primary-soft);
+  --amber: #fab219;
+  --amber-soft: rgba(250, 178, 25, 0.18);
+  --red: #d03b3b;
+  --red-soft: rgba(208, 59, 59, 0.18);
+
+  --delta-up-good: #0ca30c;
+
+  --amber-text: var(--amber);
+  --emerald-text: var(--emerald);
+  --red-text: #e66767;
+
+  --chart-1: #3987e5;
+  --chart-2: #d95926;
+  --chart-3: #199e70;
+  --chart-4: #c98500;
+  --chart-5: #d55181;
+  --chart-6: #008300;
+  --chart-7: #9085e9;
+  --chart-8: #e66767;
+
+  --nodata-fill: #2c2c2a;
+  --nodata-border: #383835;
+}
+
+/* --- Reset --- */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+/* Author-origin display utilities (.flex, .field, ...) otherwise beat the
+   UA stylesheet's [hidden] rule at equal specificity, since author styles
+   win regardless of source order — this restores hidden as an override. */
+[hidden] {
+  display: none !important;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  transition: background var(--transition), color var(--transition);
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-heading);
+  font-weight: 600;
+  margin: 0;
+  letter-spacing: -0.01em;
+}
+
+p {
+  margin: 0;
+}
+
+a {
+  color: var(--primary);
+  text-decoration: none;
+  transition: color var(--transition-fast);
+}
+
+a:hover {
+  color: var(--primary-strong);
+  text-decoration: underline;
+}
+
+/* Numeric values needing stable digit widths (tables, KPI/gauge values,
+   detail rows) — sans, not mono; see .code below for genuinely code-like
+   values (model version, MLflow ids, formulas). */
+.mono,
+.num,
+input[type="number"] {
+  font-family: var(--font-body);
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum' 1;
+}
+
+/* Code-like values only: model/run versions, file paths, formulas. */
+.code {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+button,
+input,
+select,
+textarea {
+  font-family: inherit;
+  color: inherit;
+}
+
+/* Uniform focus ring across every interactive element, keyboard-only */
+:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+::selection {
+  background: var(--primary-soft);
+}
+
+/* Slim, theme-aware scrollbars */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-strong) transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: var(--radius-full);
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}

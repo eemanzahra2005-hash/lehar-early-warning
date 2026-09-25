@@ -1,0 +1,9 @@
+{
+  "fixture": true,
+  "note": "TEST FIXTURE ONLY \u2014 randomly initialised weights, never trained. Its predictions are meaningless numbers and must never be quoted as results. Regenerate with scripts/make_flood_dl_test_fixture.py.",
+  "seed": 2025,
+  "model": {
+    "parameters": 41907,
+    "districts": 3
+  }
+}

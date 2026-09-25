@@ -1,0 +1,14 @@
+{
+  "latest": "vTEST0001",
+  "versions": {
+    "vTEST0001": {
+      "metrics": {
+        "fixture": true
+      },
+      "created_at": "2026-09-24T16:29:46.938154+00:00",
+      "family": "flood_dl",
+      "source": "scripts/make_flood_dl_test_fixture.py",
+      "trained": false
+    }
+  }
+}

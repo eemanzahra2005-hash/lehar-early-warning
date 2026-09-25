@@ -1,0 +1,16 @@
+# Provisioned dashboard provider (Phase 10) — loads every .json file under
+# /var/lib/grafana/dashboards (docker-compose.yml mounts
+# monitoring/grafana/dashboards/ there) on Grafana startup. No manual
+# "Import dashboard" click-through needed.
+apiVersion: 1
+
+providers:
+  - name: "LEHAR dashboards"
+    orgId: 1
+    folder: ""
+    type: file
+    disableDeletion: false
+    updateIntervalSeconds: 30
+    allowUiUpdates: false
+    options:
+      path: /var/lib/grafana/dashboards

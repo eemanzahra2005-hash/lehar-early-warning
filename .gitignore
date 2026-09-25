@@ -1,0 +1,63 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Virtual environment
+.venv/
+venv/
+env/
+
+# Environment variables (never commit secrets)
+.env
+*.env
+!.env.example
+
+# Databases
+*.db
+*.sqlite
+*.sqlite3
+
+# ML tracking / experiments
+mlruns/
+mlartifacts/
+
+# Test / coverage
+.pytest_cache/
+.coverage
+htmlcov/
+.mypy_cache/
+.ruff_cache/
+
+# Editors / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Build artifacts
+build/
+dist/
+*.egg-info/
+lehar-release.zip
+lehar-release-full.zip
+
+# Logs
+*.log
+
+# LEHAR Phase 2: alert-engine OPS event breadcrumbs (runtime state written
+# by the training pipeline and the rollback endpoint — see
+# app/services/alerts/ops_events.py).
+ops_events.jsonl
+
+# LEHAR Phase 2.5: the downloaded flood history the lead-time model trains on
+# (scripts/data/fetch_flood_history.py). ~7MB of third-party Open-Meteo/GloFAS
+# data that is re-downloadable at any time and is NOT this project's to
+# redistribute in bulk. The _manifest.json beside it IS committed (see the
+# negation below): it records exactly which districts were fetched, over which
+# date range, with how many gaps — so the provenance of a trained model
+# survives in git even though the bytes do not. See docs/FLOOD_DL.md.
+data/flood_history/*
+!data/flood_history/_manifest.json

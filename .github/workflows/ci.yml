@@ -1,0 +1,57 @@
+name: CI
+
+# Local-first project (CLAUDE.md rule 5) — this workflow verifies the
+# codebase, it never deploys anything. It activates once this repo is
+# pushed to GitHub (Phase 13); until then it just documents the pipeline.
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    name: Lint, quick model build, and test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Same minor version as local development (CLAUDE.md: Python 3.14).
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+          cache: pip
+          cache-dependency-path: |
+            backend/requirements.txt
+            backend/requirements-dev.txt
+
+      - name: Install pinned dependencies
+        run: python -m pip install -r backend/requirements.txt -r backend/requirements-dev.txt
+
+      - name: Lint (ruff)
+        run: python -m ruff check .
+
+      - name: Quick training-pipeline smoke test
+        # Model artifacts are committed to git (backend/ml/model/), so tests
+        # already have a real servable model without this — this step is an
+        # extra end-to-end regression check on the pipeline machinery itself.
+        # A small sample + n_estimators=15 keeps it fast; MLflow is
+        # unreachable in CI so pipeline.py's local-file-tracking fallback is
+        # exercised automatically. See scripts/ci_quick_train.py.
+        run: python scripts/ci_quick_train.py
+
+      - name: Run tests
+        run: python -m pytest backend/tests -q
+
+      - name: Dependency vulnerability scan (pip-audit, non-blocking)
+        # Informational only — see docs/SECURITY.md for the two known,
+        # currently-unfixable findings (a package version ceiling forced by
+        # mlflow, and an unused-in-this-app JWT algorithm's dependency) so
+        # this never silently regresses without a human reading the doc.
+        continue-on-error: true
+        run: |
+          python -m pip install pip-audit
+          python -m pip_audit -r backend/requirements.txt
+
+      - name: Build production Docker image
+        # Not deployed anywhere (Phase 13 wires it into docker-compose.yml)
+        # — this just fails fast if a dependency stops installing cleanly.
+        run: docker build -f backend/Dockerfile -t smart-irrigation-backend:ci .

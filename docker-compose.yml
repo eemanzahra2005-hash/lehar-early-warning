@@ -1,0 +1,167 @@
+# Smart Irrigation — local Docker Compose services (Phase 7 introduced
+# MLflow tracking/registry; Phase 9 adds "db", an optional production-style
+# PostgreSQL for the app; Phase 10 adds "prometheus" + "grafana", a local
+# monitoring stack for the FastAPI app's real metrics; Phase 13 adds "api",
+# the containerized FastAPI app itself, so `docker compose up --build`
+# brings up the ENTIRE stack with zero manual steps — see docs/DATABASE.md,
+# docs/MONITORING.md, README.md's Quickstart). Per CLAUDE.md, everything
+# here runs entirely on the local machine — no cloud services (the "cloud"
+# LLM provider, if configured, is the one deliberate exception the project
+# already documents — see backend/.env.example's LLM_PROVIDER).
+#
+# Two env files, two different jobs (Phase 15.2):
+#   - root .env (gitignored — see .env.example): Compose VARIABLE
+#     SUBSTITUTION only — POSTGRES_USER/POSTGRES_PASSWORD/POSTGRES_DB/
+#     GF_SECURITY_ADMIN_PASSWORD/JWT_SECRET/PORT in the ${...} below.
+#   - backend/.env (see backend/.env.example): the APP's own settings. The
+#     "api" service loads it via env_file — the very same file a host-run,
+#     non-Docker server reads — so app settings, including the AI
+#     assistant's LLM_PROVIDER/LLM_CLOUD_API_KEY, live in ONE place for both
+#     modes.
+#
+# Start EVERYTHING:  docker compose up --build -d      API:  http://localhost:8000 (or $PORT)
+#                                                        MLflow: http://127.0.0.1:5000
+#                                                        Prometheus: http://127.0.0.1:9090
+#                                                        Grafana: http://127.0.0.1:3000
+#                    (or just double-click START.bat / run start.sh)
+# Start a subset:     docker compose up -d mlflow
+#                     docker compose up -d db          Then: scripts\db_upgrade.bat
+#                     docker compose up -d prometheus grafana
+# Stop:   docker compose down   (add -v to also delete the named volumes)
+#
+# Note: "api" runs the app entirely inside Docker (migrations via Alembic on
+# every start, then uvicorn) against the "db" Postgres service — no host
+# Python/venv needed for this path. The AI Assistant's local fallback
+# (Ollama) still runs on the HOST, reached via host.docker.internal.
+# Prometheus scrapes BOTH "api:8000" (the container) and
+# "host.docker.internal:8000" (an optional separately-run `uvicorn --reload`
+# dev server) — one target being down is expected and fine.
+
+services:
+  mlflow:
+    image: ghcr.io/mlflow/mlflow:v3.15.1
+    container_name: smart-irrigation-mlflow
+    command: >
+      mlflow server
+      --host 0.0.0.0
+      --port 5000
+      --backend-store-uri sqlite:////mlflow/mlflow.db
+      --artifacts-destination /mlflow/artifacts
+    ports:
+      - "5000:5000"
+    volumes:
+      - mlflow_data:/mlflow
+    restart: unless-stopped
+
+  api:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: smart-irrigation-api
+    # Phase 15.2: the app's own settings come from backend/.env — the SAME
+    # file the no-Docker mode reads — so "put the key in backend\.env" works
+    # in both modes. Before this, LLM_PROVIDER/LLM_CLOUD_API_KEY were only
+    # substituted from the ROOT .env, so a key in backend\.env silently never
+    # reached this container (the 24 Aug support incident). The file is never
+    # baked into the image (.dockerignore), it's passed in at container
+    # start. required: false keeps a manual `docker compose up` without a
+    # backend/.env working (the assistant just stays offline); this long
+    # syntax needs Docker Compose 2.24+.
+    env_file:
+      - path: ./backend/.env
+        required: false
+    environment:
+      # Container-specific values ONLY. Compose gives `environment` precedence
+      # over `env_file`, so each of these deliberately overrides the same name
+      # from backend/.env inside the container. Never add LLM_* (or any other
+      # plain app setting) here: an entry — even an empty ${VAR:-} one —
+      # would shadow backend/.env again. Guarded by
+      # backend/tests/test_compose_env.py.
+      #
+      # Points at THIS compose network's "db" service (Postgres), not the
+      # SQLite default — see backend/docker-entrypoint.sh, which runs
+      # `alembic upgrade head` against this URL before starting uvicorn.
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in a root .env — see .env.example}
+      # Ollama, if installed, runs on the HOST, not in this compose network.
+      OLLAMA_BASE_URL: http://host.docker.internal:11434
+      # The MLflow SERVICE (container-to-container DNS), not the
+      # host-mapped 127.0.0.1:5000 used by scripts/retrain.bat on the host.
+      MLFLOW_TRACKING_URI: http://mlflow:5000
+      PORT: ${PORT:-8000}
+    ports:
+      - "${PORT:-8000}:${PORT:-8000}"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      # No curl in the python:3.14-slim base — reuse the app's own venv
+      # python. Reads PORT from the container's own env (set above), so this
+      # keeps working if PORT is overridden in the root .env. Real SHAP
+      # warm-up + Alembic migrations can take a while on first boot, hence
+      # the generous start_period — see START.bat, which polls this same
+      # health status via `docker compose ps`.
+      test: ["CMD", "python", "-c", "import os, urllib.request; urllib.request.urlopen('http://127.0.0.1:' + os.environ.get('PORT', '8000') + '/api/v1/health', timeout=3)"]
+      interval: 5s
+      timeout: 5s
+      retries: 24
+      start_period: 45s
+    restart: unless-stopped
+
+  db:
+    image: postgres:16-alpine
+    container_name: smart-irrigation-db
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:?Set POSTGRES_USER in a root .env — see .env.example}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in a root .env — see .env.example}
+      POSTGRES_DB: ${POSTGRES_DB:?Set POSTGRES_DB in a root .env — see .env.example}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  prometheus:
+    image: prom/prometheus:v3.13.2
+    container_name: smart-irrigation-prometheus
+    # The API runs on the HOST (uvicorn), not in this Compose network — this
+    # mapping lets the container reach it via host.docker.internal (native on
+    # Docker Desktop, but the explicit "host-gateway" alias makes it reliable
+    # on Linux Docker Engine too). See monitoring/prometheus.yml.
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    ports:
+      - "9090:9090"
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana-oss:13.0.2
+    container_name: smart-irrigation-grafana
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: ${GF_SECURITY_ADMIN_PASSWORD:?Set GF_SECURITY_ADMIN_PASSWORD in a root .env — see .env.example}
+      # No manual dashboard/data-source setup — everything is provisioned
+      # from committed files, see monitoring/grafana/provisioning/.
+      GF_PATHS_PROVISIONING: /etc/grafana/provisioning
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    ports:
+      - "3000:3000"
+    restart: unless-stopped
+
+volumes:
+  mlflow_data:
+  postgres_data:
+  prometheus_data:
+  grafana_data:

@@ -1,0 +1,13 @@
+{
+  "soil_moisture_pct": 0.8096204193834436,
+  "evapotranspiration_mm": 0.11073476626405748,
+  "rainfall_mm": 0.07937214151196728,
+  "temperature_c": 7.939429931308891e-05,
+  "humidity_pct": 5.475023764350799e-05,
+  "district": 4.271602402936596e-05,
+  "day_of_year": 4.143789102305922e-05,
+  "canal_flow_cusecs": 2.9754096439691316e-05,
+  "crop_type": 1.8138317547254325e-05,
+  "month": 3.4280771342744015e-06,
+  "was_imputed": 3.0538974013659545e-06
+}

@@ -1,0 +1,291 @@
+{
+  "model": {
+    "architecture": "GRU(2 layers, hidden 64) + per-district embedding(16) -> Linear(3)",
+    "parameters": 43555,
+    "window_days": 14,
+    "horizons_days": [
+      1,
+      2,
+      3
+    ],
+    "districts": 106
+  },
+  "data": {
+    "source": "REAL data: GloFAS river discharge (Open-Meteo Flood API) + ERA5 precipitation and maximum temperature (Open-Meteo Historical Weather API). NOT synthetic \u2014 unlike LEHAR's irrigation model, which remains trained on synthetic research data.",
+    "attribution": "Weather data by Open-Meteo.com (CC BY 4.0). River discharge from GloFAS / Copernicus Emergency Management Service, served via Open-Meteo.",
+    "districts": 106,
+    "total_days": 298708,
+    "window_days": 14,
+    "horizons": [
+      1,
+      2,
+      3
+    ],
+    "feature_names": [
+      "log_discharge",
+      "precipitation_mm",
+      "temperature_max_c",
+      "day_of_year_sin",
+      "day_of_year_cos"
+    ],
+    "samples": {
+      "train": 153488,
+      "val": 38690,
+      "test": 104834
+    },
+    "date_range": {
+      "first": "2019-01-01",
+      "last": "2026-09-18"
+    },
+    "split_boundaries": {
+      "train": "issue day <= 2022-12-31",
+      "val": "issue day in 2023",
+      "test": "issue day >= 2024-01-01"
+    }
+  },
+  "split": {
+    "train": "issue day <= 2022-12-31",
+    "val": "issue day in 2023",
+    "test": "issue day >= 2024-01-01",
+    "note": "Split by time, never at random, and per-district normalisation statistics are computed on the training rows only \u2014 a random split on a series this autocorrelated scores near-perfectly and means nothing."
+  },
+  "training": {
+    "epochs_run": 17,
+    "best_epoch": 13,
+    "best_val_loss": 0.05312353182766027,
+    "history": [
+      {
+        "epoch": 1,
+        "train_loss": 0.09387091470205236,
+        "val_loss": 0.05830799434916568
+      },
+      {
+        "epoch": 2,
+        "train_loss": 0.06774810274052667,
+        "val_loss": 0.05572951625696554
+      },
+      {
+        "epoch": 3,
+        "train_loss": 0.06486824799721648,
+        "val_loss": 0.05533347609930721
+      },
+      {
+        "epoch": 4,
+        "train_loss": 0.06308578610976322,
+        "val_loss": 0.05418528978962959
+      },
+      {
+        "epoch": 5,
+        "train_loss": 0.06204317822814746,
+        "val_loss": 0.0543717201045238
+      },
+      {
+        "epoch": 6,
+        "train_loss": 0.06096552338819676,
+        "val_loss": 0.053327341378601706
+      },
+      {
+        "epoch": 7,
+        "train_loss": 0.06044331098838058,
+        "val_loss": 0.05325555392649553
+      },
+      {
+        "epoch": 8,
+        "train_loss": 0.059668884343795504,
+        "val_loss": 0.05344878116179172
+      },
+      {
+        "epoch": 9,
+        "train_loss": 0.05917414507297509,
+        "val_loss": 0.053404606116656865
+      },
+      {
+        "epoch": 10,
+        "train_loss": 0.05860282703309888,
+        "val_loss": 0.05324186882927039
+      },
+      {
+        "epoch": 11,
+        "train_loss": 0.058025072259331574,
+        "val_loss": 0.053659170415492195
+      },
+      {
+        "epoch": 12,
+        "train_loss": 0.05743280129174576,
+        "val_loss": 0.053688166731028296
+      },
+      {
+        "epoch": 13,
+        "train_loss": 0.0567393087061897,
+        "val_loss": 0.05312353182766027
+      },
+      {
+        "epoch": 14,
+        "train_loss": 0.056253318576128405,
+        "val_loss": 0.053438006256148314
+      },
+      {
+        "epoch": 15,
+        "train_loss": 0.055448718233866795,
+        "val_loss": 0.05365901710963829
+      },
+      {
+        "epoch": 16,
+        "train_loss": 0.054835066082025735,
+        "val_loss": 0.05408433623665847
+      },
+      {
+        "epoch": 17,
+        "train_loss": 0.05401224048141642,
+        "val_loss": 0.05394669665857999
+      }
+    ],
+    "train_seconds": 394.9,
+    "seed": 20260924,
+    "batch_size": 512,
+    "learning_rate": 0.001,
+    "loss": "HuberLoss(delta=1.0) on normalised log discharge"
+  },
+  "evaluation": {
+    "test_samples": 104834,
+    "model": {
+      "D+1": {
+        "m3s": {
+          "mae": 6.7235138588363155,
+          "rmse": 75.74355137377316,
+          "nse": 0.9936579559821969
+        },
+        "log": {
+          "mae": 0.03411935080147503,
+          "rmse": 0.11083323600102543,
+          "nse": 0.9963657355414877
+        }
+      },
+      "D+2": {
+        "m3s": {
+          "mae": 10.128833095114803,
+          "rmse": 114.07090452684587,
+          "nse": 0.9856281210981405
+        },
+        "log": {
+          "mae": 0.05229026060580386,
+          "rmse": 0.16218249447175526,
+          "nse": 0.9922213002722972
+        }
+      },
+      "D+3": {
+        "m3s": {
+          "mae": 14.087395621558501,
+          "rmse": 155.62034344094448,
+          "nse": 0.9732737918095952
+        },
+        "log": {
+          "mae": 0.06449171074580387,
+          "rmse": 0.18525089892101884,
+          "nse": 0.9898552068230527
+        }
+      }
+    },
+    "persistence": {
+      "D+1": {
+        "m3s": {
+          "mae": 5.871585172749299,
+          "rmse": 65.06818889206006,
+          "nse": 0.9953196820025688
+        },
+        "log": {
+          "mae": 0.03410432638786505,
+          "rmse": 0.125802173273009,
+          "nse": 0.9953177695245485
+        }
+      },
+      "D+2": {
+        "m3s": {
+          "mae": 11.070802125264704,
+          "rmse": 122.34794115280282,
+          "nse": 0.9834667927583547
+        },
+        "log": {
+          "mae": 0.056884515262006885,
+          "rmse": 0.18541242089411228,
+          "nse": 0.9898333773487952
+        }
+      },
+      "D+3": {
+        "m3s": {
+          "mae": 15.525185054467062,
+          "rmse": 170.4227635548489,
+          "nse": 0.9679476545151751
+        },
+        "log": {
+          "mae": 0.07078022027707392,
+          "rmse": 0.2119550899000764,
+          "nse": 0.9867196277123199
+        }
+      }
+    },
+    "level_hit_rate": {
+      "event_level": 3,
+      "definition": "An 'event day' is a test issue day D0 whose Flood Risk Index, computed from the discharge that actually occurred at D0+1..D0+3, maps to alert level >= 3 (band HIGH). A 'hit' is the same index computed from the model's prediction, issued at D0, reaching level >= 3 as well - i.e. at least 24 h of lead time. Rainfall, exposure, month and the 30-day baseline are held identical across model, persistence and actual, so only the discharge forecast differs.",
+      "rainfall_assumption": "Observed rainfall over D0+1..D0+3 is used for all three series alike (a perfect rain forecast). This isolates the discharge model's lead-time skill; it is NOT an end-to-end operational score.",
+      "samples": 104834,
+      "model": {
+        "true_positives": 1375,
+        "false_positives": 127,
+        "false_negatives": 1058,
+        "true_negatives": 102274,
+        "event_days": 2433,
+        "flagged_days": 1502,
+        "hit_rate": 0.5651459103986848,
+        "false_alarm_ratio": 0.08455392809587217,
+        "false_alarm_rate": 0.0012402222634544584
+      },
+      "persistence": {
+        "true_positives": 1115,
+        "false_positives": 74,
+        "false_negatives": 1318,
+        "true_negatives": 102327,
+        "event_days": 2433,
+        "flagged_days": 1189,
+        "hit_rate": 0.458281956432388,
+        "false_alarm_ratio": 0.06223717409587889,
+        "false_alarm_rate": 0.0007226491928789758
+      }
+    }
+  },
+  "verdict_vs_persistence": {
+    "D+1": {
+      "model_mae_log": 0.03411935080147503,
+      "persistence_mae_log": 0.03410432638786505,
+      "beats_persistence": false,
+      "improvement_pct": -0.04405427463692094
+    },
+    "D+2": {
+      "model_mae_log": 0.05229026060580386,
+      "persistence_mae_log": 0.056884515262006885,
+      "beats_persistence": true,
+      "improvement_pct": 8.076459182331341
+    },
+    "D+3": {
+      "model_mae_log": 0.06449171074580387,
+      "persistence_mae_log": 0.07078022027707392,
+      "beats_persistence": true,
+      "improvement_pct": 8.884557729056594
+    }
+  },
+  "evaluated_at": "2026-09-25T16:44:24.154618+00:00",
+  "version": "v20260925T164424165573Z",
+  "export": {
+    "format": "onnx",
+    "opset": 14,
+    "max_abs_difference_vs_pytorch": 8.344650268554688e-07,
+    "onnx_bytes": 179239,
+    "input_names": [
+      "window",
+      "district_id"
+    ],
+    "output_names": [
+      "prediction"
+    ]
+  }
+}

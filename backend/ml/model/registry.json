@@ -1,0 +1,135 @@
+{
+  "latest": "v20260812T205121116100Z",
+  "versions": {
+    "v20260812T125632118440Z": {
+      "metrics": {
+        "mae": 0.23590580422208923,
+        "rmse": 0.31534449525653585,
+        "r2": 0.9955806755927646,
+        "n_train": 26388,
+        "n_test": 6597,
+        "n_estimators": 120,
+        "max_depth": 10
+      },
+      "created_at": "2026-08-12T12:56:32.189808+00:00"
+    },
+    "v20260812T154625550898Z": {
+      "metrics": {
+        "mae": 0.24955822715040216,
+        "rmse": 0.32864038710293814,
+        "r2": 0.9959126089298025,
+        "n_train": 62744,
+        "n_test": 15687,
+        "n_estimators": 120,
+        "max_depth": 10
+      },
+      "created_at": "2026-08-12T15:46:25.616595+00:00"
+    },
+    "v20260812T204846897937Z": {
+      "metrics": {
+        "mae": 0.24955822715040216,
+        "rmse": 0.3286403871029382,
+        "r2": 0.9959126089298025,
+        "n_train": 62744,
+        "n_test": 15687,
+        "n_estimators": 120,
+        "max_depth": 10
+      },
+      "created_at": "2026-08-12T20:48:46.966654+00:00",
+      "source": "pipeline",
+      "seed": 42,
+      "dataset_path": "C:\\Users\\user\\Desktop\\Smart Irrigation\\data\\synthetic_irrigation_dataset_pk107.csv",
+      "dataset_hash": "6545080cf491623e",
+      "mlflow_run_id": "5847efaa60b644888e3b051db1b82b2e",
+      "mlflow_tracking_uri": "http://127.0.0.1:5000",
+      "mlflow_model_version": "1",
+      "gate": {
+        "passed": true,
+        "reasons": [
+          "PASS: candidate MAE 0.2496 is better than or equal to production MAE 0.2496."
+        ]
+      }
+    },
+    "v20260812T205121116100Z": {
+      "metrics": {
+        "mae": 0.24955822715040216,
+        "rmse": 0.32864038710293814,
+        "r2": 0.9959126089298025,
+        "n_train": 62744,
+        "n_test": 15687,
+        "n_estimators": 120,
+        "max_depth": 10
+      },
+      "created_at": "2026-08-12T20:51:21.169365+00:00",
+      "source": "pipeline",
+      "seed": 42,
+      "dataset_path": "C:\\Users\\user\\Desktop\\Smart Irrigation\\data\\synthetic_irrigation_dataset_pk107.csv",
+      "dataset_hash": "6545080cf491623e",
+      "mlflow_run_id": "448c0b3cf1b74ac3992d363326436239",
+      "mlflow_tracking_uri": "http://127.0.0.1:5000",
+      "mlflow_model_version": "2",
+      "gate": {
+        "passed": true,
+        "reasons": [
+          "PASS: candidate MAE 0.2496 is better than or equal to production MAE 0.2496."
+        ]
+      }
+    },
+    "v20260814T181129195151Z": {
+      "metrics": {
+        "mae": 0.45702182693670523,
+        "rmse": 0.6103860737521505,
+        "r2": 0.9859001803486013,
+        "n_train": 31393,
+        "n_test": 15687,
+        "n_estimators": 40,
+        "max_depth": 8
+      },
+      "created_at": "2026-08-14T18:11:29.217397+00:00",
+      "source": "pipeline",
+      "seed": 42,
+      "sample_frac": 0.5,
+      "dataset_path": "C:\\Users\\user\\Desktop\\Smart Irrigation\\data\\synthetic_irrigation_dataset_pk107.csv",
+      "dataset_hash": "6545080cf491623e",
+      "mlflow_run_id": "a3a51add7429451b8f0119c80e2b6e43",
+      "mlflow_tracking_uri": "http://127.0.0.1:5000",
+      "mlflow_model_version": "2",
+      "gate": {
+        "passed": true,
+        "reasons": [
+          "PASS: candidate meets the absolute ceilings QG_MAX_MAE and QG_MIN_R2.",
+          "Production comparison skipped (compare_to_production=False) \u2014 evaluated only against the absolute ceilings QG_MAX_MAE/QG_MIN_R2, deliberately not against production's MAE (a different deployment profile, e.g. a memory-light model \u2014 see PROGRESS.md Phase 13.1)."
+        ],
+        "compared_to_production": false
+      }
+    },
+    "v20260923T212705208535Z": {
+      "metrics": {
+        "mae": 0.2513365741006935,
+        "rmse": 0.3312862344563467,
+        "r2": 0.9958465297326218,
+        "n_train": 62744,
+        "n_test": 15687,
+        "n_estimators": 60,
+        "max_depth": 10
+      },
+      "created_at": "2026-09-23T21:27:05.287373+00:00",
+      "source": "pipeline",
+      "seed": 42,
+      "sample_frac": null,
+      "dataset_path": "C:\\Users\\user\\Desktop\\LEHAR\\data\\synthetic_irrigation_dataset_pk107.csv",
+      "dataset_hash": "6545080cf491623e",
+      "mlflow_run_id": "5fccbc41bc3d4ae885e15f37790762f6",
+      "mlflow_tracking_uri": "file:///C:/Users/user/Desktop/LEHAR/mlruns",
+      "mlflow_model_version": "1",
+      "gate": {
+        "passed": true,
+        "reasons": [
+          "PASS: candidate meets the absolute ceilings QG_MAX_MAE and QG_MIN_R2.",
+          "Production comparison skipped (compare_to_production=False) \u2014 evaluated only against the absolute ceilings QG_MAX_MAE/QG_MIN_R2, deliberately not against production's MAE (a different deployment profile, e.g. a memory-light model \u2014 see PROGRESS.md Phase 13.1)."
+        ],
+        "compared_to_production": false
+      }
+    }
+  }
+}
