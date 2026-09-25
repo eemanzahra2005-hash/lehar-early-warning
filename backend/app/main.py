@@ -20,6 +20,7 @@ from app.logging_config import configure_logging
 from app.middleware import RequestLoggingMiddleware, SecureHeadersMiddleware, register_exception_handlers
 from app.rate_limit import limiter
 from app.routers import (
+    alert_channels,
     alerts,
     assistant,
     auth,
@@ -135,6 +136,9 @@ def create_app() -> FastAPI:
     app.include_router(report.router, prefix=settings.api_v1_prefix)
     # LEHAR Phase 2: the alert engine's endpoints (see app/routers/alerts.py).
     app.include_router(alerts.router, prefix=settings.api_v1_prefix)
+    # LEHAR Phase 3: Telegram webhook + email double opt-in
+    # (see app/routers/alert_channels.py).
+    app.include_router(alert_channels.router, prefix=settings.api_v1_prefix)
 
     # Phase 10: Prometheus metrics. instrument() adds automatic per-request
     # HTTP metrics (latency, in-progress, request/response size); expose()

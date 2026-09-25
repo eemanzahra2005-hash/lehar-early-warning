@@ -207,10 +207,10 @@ flowchart TB
 
     Resolve["4. Resolution pass<br/>2 consecutive clear runs<br/>-> resolved + ALL_CLEAR"] --> Deliver
 
-    subgraph Deliver["5. Deliver (channels.py)"]
+    subgraph Deliver["5. Deliver (channels/)"]
         InApp["in-app — working"]
-        Telegram["telegram — Phase 3<br/>records status=skipped"]
-        Email["email — Phase 3<br/>records status=skipped"]
+        Telegram["telegram — Bot API (Phase 3)<br/>skipped if no token"]
+        Email["email — Brevo API (Phase 3)<br/>skipped if no key"]
     end
 
     Deliver --> Record["6. alert_runs row<br/>+ Prometheus counters"]

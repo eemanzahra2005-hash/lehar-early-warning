@@ -24,10 +24,9 @@ from dataclasses import dataclass, field
 DISCLAIMER_EN = "Research advisory — NDMA/PMD/PDMA official warnings are authoritative."
 DISCLAIMER_UR = "تحقیقی مشورہ — این ڈی ایم اے/پی ایم ڈی/پی ڈی ایم اے کی سرکاری وارننگ ہی مستند ہے۔"
 
-# Delivery channel identifiers. Only IN_APP actually delivers in Phase 2 —
-# TELEGRAM and EMAIL are declared here (and matched against subscriptions)
-# so the level metadata is complete and the console can render it, but
-# their transports arrive in Phase 3. See channels.py.
+# Delivery channel identifiers. IN_APP has delivered since Phase 2; TELEGRAM
+# and EMAIL have real transports since LEHAR Phase 3, each disabling itself
+# cleanly when its credentials are not configured. See channels/.
 CHANNEL_IN_APP = "in_app"
 CHANNEL_TELEGRAM = "telegram"
 CHANNEL_EMAIL = "email"

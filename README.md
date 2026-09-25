@@ -299,6 +299,10 @@ is read by `backend/app/config.py`'s `Settings`.
 | `FLOOD_W_MONSOON` | `0.10` | Flood Risk Index component weight |
 | `FLOOD_DL_ENABLED` | `false` | Flood lead-time model (`GET /api/v1/flood/forecast/{district}` + FLOOD_FORECAST alerts) — see [docs/FLOOD_DL.md](docs/FLOOD_DL.md) |
 | `FLOOD_DL_MODEL_VERSION` | `latest` | Which registered flood lead-time model to serve |
+| `TELEGRAM_BOT_TOKEN` / `TELEGRAM_BOT_USERNAME` / `TELEGRAM_WEBHOOK_SECRET` | *(empty)* | Telegram alert delivery; disabled while empty — see [docs/ALERTS.md](docs/ALERTS.md) |
+| `BREVO_API_KEY` / `ALERT_FROM_EMAIL` / `ALERT_FROM_NAME` | *(empty)* / *(empty)* / `LEHAR Alerts` | Email alert delivery via Brevo's HTTPS API; disabled while empty |
+| `PUBLIC_BASE_URL` | *(empty)* | Public https:// origin of the API, for email links and the Telegram webhook |
+| `ALERT_MAX_SENDS_PER_RUN` | `200` | Cap on Telegram + email sends per alert run (free-tier budget) |
 | `RISK_W_MOISTURE_DEFICIT` | `0.35` | Farm Risk Score component weight |
 | `RISK_W_ET0_DEMAND` | `0.20` | Farm Risk Score component weight |
 | `RISK_W_HEAT_STRESS` | `0.15` | Farm Risk Score component weight |
@@ -416,6 +420,9 @@ What **is** real, live data:
 - `docs/DATABASE.md`, `docs/MLOPS.md`, `docs/DATA_VALIDATION.md`,
   `docs/DRIFT.md`, `docs/RISK_SCORE.md`, `docs/FLOOD_RISK.md`,
   `docs/MONITORING.md`
+- [docs/ALERTS.md](docs/ALERTS.md) — alert delivery over Telegram and email
+  (Brevo): creating the bot, setting the webhook, the Brevo key and sender,
+  the double opt-in, delivery rules, and testing locally
 - [docs/SOIL_MOISTURE.md](docs/SOIL_MOISTURE.md) — live soil moisture:
   Open-Meteo source, depth weighting, the m³/m³ → `soil_moisture_pct`
   mapping and why, and its honest limits

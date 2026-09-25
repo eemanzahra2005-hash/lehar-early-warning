@@ -37,6 +37,22 @@ services:
         sync: false
       - key: LLM_CLOUD_API_KEY
         sync: false
+      # LEHAR Phase 3 alert delivery — see docs/ALERTS.md. Each channel
+      # disables itself cleanly while its values are unset.
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      - key: TELEGRAM_BOT_USERNAME
+        sync: false
+      - key: TELEGRAM_WEBHOOK_SECRET
+        sync: false
+      - key: BREVO_API_KEY
+        sync: false
+      - key: ALERT_FROM_EMAIL
+        sync: false
+      - key: PUBLIC_BASE_URL
+        sync: false
+      - key: ALERT_MAX_SENDS_PER_RUN
+        value: "200"
       # Cloud-only on Render: there's no local Ollama to fall back to on a
       # hosted machine, so "hybrid"'s local fallback would just fail — see
       # docs/DEPLOY_RENDER.md for the tradeoff (assistant unavailable if no

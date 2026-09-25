@@ -54,6 +54,8 @@ __all__ = [
     "get_mlflow_registry_service",
     "get_performance_service",
     "get_alert_engine",
+    "get_telegram_bot",
+    "get_email_channel",
 ]
 
 # Module-global singleton holder (NOT @lru_cache) — Phase 7's promote/
@@ -286,6 +288,27 @@ def get_alert_engine(
     return _alert_engine_for(
         flood_service, weather_service, model_service, drift_service, flood_forecast_service
     )
+
+
+@lru_cache
+def get_telegram_bot():
+    """LEHAR Phase 3: the Telegram bot behind POST
+    /api/v1/alerts/telegram/webhook. A singleton over Settings' TELEGRAM_*
+    values; tests override it with a bot whose channel talks to an
+    httpx.MockTransport. Imported lazily so a process that never receives a
+    webhook call never builds it."""
+    from app.services.alerts.channels.telegram import TelegramBot, TelegramChannel
+
+    return TelegramBot(TelegramChannel())
+
+
+@lru_cache
+def get_email_channel():
+    """LEHAR Phase 3: the Brevo email channel behind the double opt-in
+    endpoints. Same singleton/override pattern as get_telegram_bot."""
+    from app.services.alerts.channels.email import EmailChannel
+
+    return EmailChannel()
 
 
 @lru_cache

@@ -787,3 +787,31 @@ class AlertStatsResponse(BaseModel):
     total_runs: int
     last_run: AlertRunResponse | None = None
     disclaimer: str
+
+
+# --- LEHAR Phase 3: alert delivery channels ---------------------------------
+
+class EmailSubscribeRequest(BaseModel):
+    """POST /api/v1/alerts/email/subscribe. Nothing is sent to this address
+    except a verification email until its owner clicks the link in it."""
+
+    # A plain pattern rather than EmailStr — email-validator is not a pinned
+    # dependency (see RegisterRequest above). Brevo rejects anything that is
+    # not deliverable anyway; this only stops obvious typos early.
+    email: str = Field(max_length=254, pattern=r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+    # District codes ("dera_ghazi_khan") or names ("Dera Ghazi Khan").
+    districts: list[str] = Field(min_length=1, max_length=107)
+    # Level 1 is in-app only, so an email subscription starts at 2.
+    min_level: int = Field(default=2, ge=2, le=5)
+    language: str = Field(default="en", pattern="^(en|ur)$")
+
+
+class EmailSubscribeResponse(BaseModel):
+    status: str
+    detail: str
+    disclaimer: str
+
+
+class TelegramWebhookResponse(BaseModel):
+    ok: bool
+    handled: str

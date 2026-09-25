@@ -208,7 +208,10 @@ class Alert(Base):
 class AlertSubscription(Base):
     """Who receives which district's alerts, on which channel, from which
     level up. Phase 2 writes alert_deliveries rows against these; Phase 3
-    adds the transports and the verification flow that sets `verified`."""
+    adds the transports and the verification flow that sets `verified`
+    (Telegram: /start; email: the double opt-in link). /stop and email
+    unsubscribe set it back to False — unverified is never messaged — so
+    no row is deleted and the delivery history stays intact."""
 
     __tablename__ = "alert_subscriptions"
 

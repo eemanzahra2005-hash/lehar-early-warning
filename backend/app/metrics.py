@@ -59,6 +59,24 @@ alert_run_duration_seconds = Histogram(
     "(rule evaluation + dedupe + persistence + delivery).",
 )
 
+deliveries_total = Counter(
+    "lehar_deliveries_total",
+    "Total alert_deliveries rows written, by channel (in_app | telegram | email) "
+    "and status (sent | failed | skipped) — see app/services/alerts/channels/.",
+    ["channel", "status"],
+)
+
+delivery_latency_seconds = Histogram(
+    "lehar_delivery_latency_seconds",
+    "Time from an alert being raised (its created_at) to the provider accepting "
+    "the Telegram/email message; for a level 4/5 re-send, from the start of the "
+    "run that re-sent it. Successful external sends only.",
+    ["channel"],
+    # Seconds to an hour: a healthy run lands in the first few buckets, a
+    # budget-deferred alert delivered on the next run in the last ones.
+    buckets=(0.5, 1, 2.5, 5, 10, 30, 60, 300, 900, 1800, 3600, 7200, 21600),
+)
+
 model_info = Gauge(
     "model_info",
     "Always 1 for the currently-served model version; labeled by version, "

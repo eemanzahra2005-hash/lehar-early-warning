@@ -473,17 +473,23 @@ default the moment its alert resolves.
 
 ## Channels
 
-| Channel | Phase 2 status |
+| Channel | Status |
 |---|---|
-| in-app | **working** — the alert row itself, read via `GET /api/v1/alerts` |
-| Telegram | interface only; transport arrives in Phase 3 |
-| email (Brevo) | interface only; transport arrives in Phase 3 |
+| in-app | **working** (Phase 2) — the alert row itself, read via `GET /api/v1/alerts` |
+| Telegram | **working** (Phase 3) — Bot API over HTTPS, webhook commands, Acknowledge button |
+| email (Brevo) | **working** (Phase 3) — Brevo HTTPS API, double opt-in, unsubscribe link in every email |
+
+Level 1 is **never** pushed to Telegram or email — it stays in the app.
+Levels 4 and 5 are **re-sent every 6 hours** while the alert stays open, to
+each subscriber who has not pressed Acknowledge. Setup, the bot commands
+and the delivery rules are in [docs/ALERTS.md](ALERTS.md).
 
 Every delivery attempt — including skips — is written to `alert_deliveries`,
-so "why didn't I get this?" always has an answer in the data. A Telegram or
-email subscription that matches an alert today records an honest
-`status: "skipped"` with the reason, never a fabricated `"sent"`
-(CLAUDE.md rule 4). An **unverified** subscription is never messaged.
+so "why didn't I get this?" always has an answer in the data. A channel
+whose credentials are not configured records an honest
+`status: "skipped"` naming the missing variable, never a fabricated
+`"sent"` (CLAUDE.md rule 4). An **unverified** subscription is never
+messaged.
 
 ---
 

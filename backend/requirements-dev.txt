@@ -3,6 +3,8 @@
 -r requirements.txt
 
 pytest==9.1.1
+# Also a runtime pin since LEHAR Phase 3 (see requirements.txt); kept here
+# too, identical, because the test client depends on it directly.
 httpx==0.28.1
 # Imported directly by backend/tests/test_compose_env.py (Phase 15.2) to
 # parse docker-compose.yml — already installed as an mlflow dependency, pinned

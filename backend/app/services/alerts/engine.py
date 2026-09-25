@@ -12,7 +12,9 @@ What a run does, in order:
      cooldown, escalation);
   5. resolve alerts whose condition has been gone for two runs and emit an
      ALL_CLEAR for each;
-  6. deliver every raised alert through channels.py;
+  6. deliver every raised alert through channels/ — and, since LEHAR
+     Phase 3, re-send open level 4/5 alerts every 6 h and retry anything
+     an earlier run deferred, all inside ALERT_MAX_SENDS_PER_RUN;
   7. record the run in alert_runs — always, even when nothing fired.
 
 Alert rows are for things that are HAPPENING. A calm district writes
@@ -48,7 +50,7 @@ from app.db import Alert, AlertRun, AlertSubscription
 from app.db import Field as FieldModel
 from app.metrics import alert_run_duration_seconds, alerts_raised_total, alerts_suppressed_total
 from app.services.alerts import ops_events
-from app.services.alerts.channels import DeliveryDispatcher
+from app.services.alerts.channels import DeliveryDispatcher, SendBudget
 from app.services.alerts.levels import OPS_LEVEL
 from app.services.alerts.rules import (
     TYPE_ALL_CLEAR,
@@ -205,6 +207,9 @@ class AlertEngine:
         self._forecast_days = settings.alert_forecast_days
         self._cooldown = timedelta(hours=settings.alert_cooldown_hours)
         self._clear_runs_to_resolve = settings.alert_clear_runs_to_resolve
+        # LEHAR Phase 3: the cap on Telegram + email sends per run, so one
+        # bad day across 107 districts cannot exhaust a free tier.
+        self._max_sends_per_run = settings.alert_max_sends_per_run
 
     # --- fetching ------------------------------------------------------
 
@@ -635,9 +640,18 @@ class AlertEngine:
         db.flush()
 
         # --- delivery ---
+        # One call for the whole run, so the send budget is shared and spent
+        # highest level first, and so level 4/5 re-sends and deferred retries
+        # from earlier runs compete for it on the same terms (LEHAR Phase 3).
         subscriptions = db.query(AlertSubscription).order_by(AlertSubscription.id).all()
-        for alert in raised + all_clears:
-            self._dispatcher.dispatch(db, alert, subscriptions)
+        self._dispatcher.dispatch_run(
+            db,
+            raised + all_clears,
+            subscriptions,
+            now=started_at,
+            budget=SendBudget(self._max_sends_per_run),
+            include_resends=True,
+        )
 
         # With a pinned `now` (tests), finished_at is pinned too, so a run's
         # stored row is byte-identical across repeats.

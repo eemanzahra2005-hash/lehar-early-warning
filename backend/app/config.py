@@ -293,6 +293,41 @@ class Settings(BaseSettings):
     alert_ops_events_path: str = "backend/data/ops_events.jsonl"
     alert_ops_event_max_age_hours: float = 24.0
 
+    # --- Alert delivery channels (LEHAR Phase 3) ---
+    # Every channel DISABLES ITSELF when its credentials are empty (the
+    # default): a matching subscriber then gets an honest "skipped" delivery
+    # row naming the missing variable, never a fabricated "sent" and never
+    # an error. Nothing here is required to run LEHAR locally (CLAUDE.md
+    # rule 5). See docs/ALERTS.md for how to obtain each value.
+
+    # Telegram: the token @BotFather gives you, the bot's @username (without
+    # the @, used to build t.me/<bot>?start=<district_code> deep links), and
+    # a random secret Telegram echoes back in the
+    # X-Telegram-Bot-Api-Secret-Token header on every webhook call — the
+    # webhook refuses any request without it.
+    telegram_bot_token: str = ""
+    telegram_bot_username: str = ""
+    telegram_webhook_secret: str = ""
+
+    # Email via Brevo's transactional HTTPS API (never SMTP — Render's free
+    # tier blocks outbound SMTP ports). ALERT_FROM_EMAIL must be a sender
+    # verified in the Brevo dashboard.
+    brevo_api_key: str = ""
+    alert_from_email: str = ""
+    alert_from_name: str = "LEHAR Alerts"
+
+    # Public https:// origin of THIS API (e.g. https://lehar-api.onrender.com),
+    # used to build the email verification/unsubscribe links and the
+    # Telegram webhook URL. Email is disabled without it, because every
+    # email must carry a working unsubscribe link.
+    public_base_url: str = ""
+
+    # Upper bound on Telegram + email sends in ONE alert run (re-sends
+    # included), to stay inside the providers' free tiers (Brevo: 300
+    # emails/day). Sends past the cap are recorded as deferred and retried
+    # on the next run, highest level first.
+    alert_max_sends_per_run: int = 200
+
     model_config = SettingsConfigDict(
         env_file=BASE_DIR / ".env",
         env_file_encoding="utf-8",

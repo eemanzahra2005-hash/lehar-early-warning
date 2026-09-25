@@ -463,14 +463,100 @@ artifact, and the unfinished claims in this section were corrected.
       recovery + 6 new, none of the existing removed or modified)
 - [x] git commit: "phase2.5: flood lead-time GRU model"
 
-## Phase 3 — Telegram + email (Brevo) delivery channels
+## Phase 3 — Telegram + email (Brevo) delivery channels — **DONE**
 
-- [ ] Telegram bot delivery
-- [ ] Email delivery via Brevo free tier
-- [ ] Per-channel failure isolation — a down channel never blocks the others
-      or the alert record itself
-- [ ] Credentials via env vars only; `backend/.env.example` updated
-- [ ] Tests pass
+Real transports behind Phase 2's unchanged `AlertChannel` interface. Setup,
+the bot commands, the delivery rules and local testing:
+[docs/ALERTS.md](docs/ALERTS.md).
+
+- [x] `channels.py` became the package `app/services/alerts/channels/`
+      (moved with `git mv`; every existing import path still works):
+      `base.py` (shared types), `_http.py` (the one retrying HTTPS POST),
+      `telegram.py`, `email.py`, and the dispatcher in `__init__.py`
+- [x] **Telegram** — Bot API `sendMessage` over HTTPS via httpx (5 s connect
+      / 10 s timeouts; 3 retries at 1/2/4 s on network errors, 429 and 5xx,
+      honouring a 429's `retry_after` up to 10 s; other 4xx not retried),
+      HTML parse mode with escaping, Urdu or English per subscriber, trimmed
+      to 4096 chars without losing the disclaimer, and an inline
+      **Acknowledge** button. The bot token is redacted from every error
+      string and httpx's request logging is quietened so it never reaches a
+      log
+- [x] Webhook `POST /api/v1/alerts/telegram/webhook`, **webhook mode only**,
+      guarded by `X-Telegram-Bot-Api-Secret-Token` (constant-time compare;
+      503 while unconfigured, 401 on a wrong/missing secret; always 200
+      once authenticated, so Telegram never re-delivers a bad update
+      forever). Commands: `/start <district_code>` (deep link
+      `t.me/<bot>?start=<code>`; a bare `/start` never subscribes to all
+      107 districts), `/stop`, `/level <1-5>`, `/lang en|ur`, `/status`.
+      The Acknowledge callback marks the alert acknowledged and records
+      *which* chat did, in the alert payload, so reminders stop for that
+      chat only. Plus `GET /alerts/telegram/link?district=` for the console
+- [x] **Email** via Brevo's transactional API v3 (`/v3/smtp/email`, HTTPS,
+      never SMTP). **Double opt-in**: `POST /alerts/email/subscribe` stores
+      an unverified row and sends only a confirmation email whose signed
+      JWT link expires in 48 h; the requested districts/level/language ride
+      inside the signed link and apply only on click, so knowing someone's
+      address lets you neither subscribe them nor change their settings.
+      `GET /alerts/email/verify`, and `GET`/`POST /alerts/email/unsubscribe`
+      (the link in every email, plus RFC 8058 one-click
+      `List-Unsubscribe` headers). Bilingual HTML + plain-text emails built
+      from the stored template text. Rate-limited like the auth endpoints
+- [x] **No schema change.** `/stop` and unsubscribe set `verified=False`
+      (unverified is never messaged — the Phase 2 rule), keeping every
+      delivery row intact; the migration chain's head is unchanged
+- [x] **Delivery pipeline** — one `dispatch_run()` per engine run: fan-out
+      to verified subscriptions matching district + `min_level` + channel,
+      text in the subscriber's language; **level 1 never leaves the app**;
+      **levels 4/5 re-sent every 6 h** while open, to subscribers who have
+      not acknowledged, and to anyone who subscribes mid-emergency; decided
+      from `alert_deliveries` history alone, so a restart loses nothing
+- [x] **Send budget** `ALERT_MAX_SENDS_PER_RUN` (default 200), re-sends
+      included, spent **highest level first**; past it, sends are recorded
+      as `skipped` / `Deferred: …` and delivered by the next run. A disabled
+      channel spends none of it
+- [x] **Per-channel failure isolation**: a channel raising or failing never
+      blocks the other or the alert; after 3 consecutive failures in a run a
+      channel's remaining sends are deferred rather than each burning its
+      own retries
+- [x] Each `alert_deliveries` row records `status`, `attempts`, `error` and
+      `latency_ms` = alert `created_at` → provider 2xx (for a reminder, from
+      the run that re-sent it)
+- [x] Channels **disable themselves cleanly** when their env is missing —
+      an honest `skipped` row naming the missing variable, never `sent`,
+      never an error. The existing Phase 2 test asserting that is unchanged
+- [x] Env: `TELEGRAM_BOT_TOKEN`, `TELEGRAM_BOT_USERNAME`,
+      `TELEGRAM_WEBHOOK_SECRET`, `BREVO_API_KEY`, `ALERT_FROM_EMAIL`,
+      `ALERT_FROM_NAME`, `PUBLIC_BASE_URL`, `ALERT_MAX_SENDS_PER_RUN` —
+      `config.py`, `backend/.env.example` (commented), `render.yaml`
+      (`sync: false` for the secrets), README. `conftest.py` blanks them so
+      a real token in a developer's `.env` can never message anyone from
+      the suite
+- [x] `scripts/set_telegram_webhook.py` — registers the webhook URL + secret
+      (`allowed_updates` limited to what is handled, `max_connections=1`
+      for the single-worker host) and the command menu; `--info`,
+      `--delete`, `--url` for a tunnel; refuses non-HTTPS URLs
+- [x] Prometheus: `lehar_deliveries_total{channel,status}`,
+      `lehar_delivery_latency_seconds{channel}` histogram
+- [x] `httpx==0.28.1` promoted from the dev pins to `requirements.txt` and
+      `requirements-deploy.txt` (same version). Weighed against 512 MB:
+      **+4.3 MB RSS** measured on top of what the API already imports, and
+      loaded only when the channels are first built
+- [x] Docs: new [docs/ALERTS.md](docs/ALERTS.md); `docs/ALERT_LEVELS.md`,
+      `ARCHITECTURE.md` and the Phase 2 module comments updated
+- [x] Tests fully offline — every Telegram/Brevo call goes through a real
+      `httpx.Client` over `httpx.MockTransport`: send + retry/backoff +
+      token redaction, webhook auth + every command + the Acknowledge
+      callback, email send + the whole opt-in flow, fan-out matching, the
+      budget cap and deferred retry, 6 h re-sends and per-chat ack, failure
+      isolation, latency, metrics, and the webhook script
+- [x] ruff clean; full suite green — **643 passed** (563 existing + 80 new,
+      none of the existing removed or modified)
+- [x] git commit: "phase3: telegram + email delivery channels"
+
+**Not verified against the live providers** — no bot token or Brevo key
+exists on the development machine, so every provider interaction was
+tested against mocked HTTP only. The first real send is a Phase 6
+(deployment) check.
 
 ## Phase 4 — Subscriptions, admin stats, scheduler docs
 

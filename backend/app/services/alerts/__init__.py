@@ -7,8 +7,9 @@ threshold to farmer without holding the whole system in their head:
                   (EN/UR), farmer actions, channels. Single source of truth.
     rules.py      pure threshold functions. Numbers in, level out. No I/O.
     templates.py  deterministic bilingual message templates. No LLM, ever.
-    channels.py   the delivery interface + the in-app channel. Phase 3 adds
-                  Telegram and email behind the same interface.
+    channels/     the delivery interface, the in-app channel, and (Phase 3)
+                  the Telegram and Brevo email transports behind it, plus
+                  the dispatcher: fan-out, send budget, level 4/5 re-sends.
     ops_events.py cross-process breadcrumbs for the OPS rule.
     engine.py     the run: fetch -> evaluate -> dedupe/escalate -> resolve
                   -> deliver -> record.

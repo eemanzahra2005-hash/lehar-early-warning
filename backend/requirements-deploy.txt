@@ -70,6 +70,16 @@ alembic==1.19.1
 # HTTP client (Open-Meteo weather/flood, cloud LLM)
 requests==2.34.2
 
+# HTTPS client for alert delivery (LEHAR Phase 3): the Telegram Bot API and
+# Brevo's transactional email API, with explicit connect/read timeouts and
+# an injectable transport so the tests mock it with no network. Promoted
+# from a dev-only pin (it was already there, as FastAPI's TestClient
+# transport) at the same version. Weighed against the 512 MB ceiling
+# (CLAUDE.md rule 11): +4.3 MB RSS measured on top of the modules the API
+# already loads (anyio, ssl and certifi are shared with starlette/requests),
+# and imported only when the delivery channels are first built.
+httpx==0.28.1
+
 # Auth / JWT — bearer tokens, see docs/API_AUTH.md
 python-jose[cryptography]==3.5.0
 cryptography==49.0.0

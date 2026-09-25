@@ -54,6 +54,21 @@ os.environ["LLM_CLOUD_API_KEY"] = ""
 # is the documented one: off.
 os.environ["FLOOD_DL_ENABLED"] = "false"
 
+# LEHAR Phase 3: same rationale again. A developer who has put a real
+# TELEGRAM_BOT_TOKEN or BREVO_API_KEY in backend/.env must never have the
+# suite message real people. Blank = every delivery channel disabled, which
+# is also the documented default; the channel tests build their own
+# channels with fake credentials over an httpx.MockTransport.
+for _channel_env in (
+    "TELEGRAM_BOT_TOKEN",
+    "TELEGRAM_BOT_USERNAME",
+    "TELEGRAM_WEBHOOK_SECRET",
+    "BREVO_API_KEY",
+    "ALERT_FROM_EMAIL",
+    "PUBLIC_BASE_URL",
+):
+    os.environ[_channel_env] = ""
+
 import pytest
 from fastapi.testclient import TestClient
 
