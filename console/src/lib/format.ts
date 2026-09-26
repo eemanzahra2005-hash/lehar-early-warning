@@ -19,3 +19,11 @@ export function humanType(type: string | null | undefined): string {
   const lower = type.toLowerCase().replace(/_/g, " ");
   return lower.charAt(0).toUpperCase() + lower.slice(1);
 }
+
+/** Local calendar day ("26 Sept 2026") — the alert feed's timeline groups by it. */
+export function formatDay(iso: string | null | undefined, lang: Lang): string {
+  if (!iso) return "—";
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return iso;
+  return date.toLocaleDateString(lang === "ur" ? "ur-PK" : "en-PK", { dateStyle: "medium" });
+}

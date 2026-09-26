@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
-import { byLevelDesc, contrastRatio, isTakeoverLevel, LEVEL_TOKENS, levelToken } from "../levels";
+import { byLevelDesc, contrastRatio, DARK_SURFACES, isTakeoverLevel, LEVEL_TOKENS, levelToken } from "../levels";
 
 // The backend's single source of truth, read from this same repo so the
 // console's colour tokens can never silently drift from the engine's.
@@ -44,6 +44,33 @@ describe("level tokens", () => {
     for (const token of Object.values(LEVEL_TOKENS)) {
       expect(contrastRatio(token.bg, token.fg), token.key).toBeGreaterThanOrEqual(4.5);
     }
+  });
+
+  it("keep level-coloured ink readable (AA) on every dark surface", () => {
+    for (const token of Object.values(LEVEL_TOKENS)) {
+      for (const surface of DARK_SURFACES) {
+        expect(contrastRatio(token.ink, surface), `${token.key} ink on ${surface}`).toBeGreaterThanOrEqual(4.5);
+      }
+    }
+  });
+
+  it("keep hero band text AA across the whole gradient", () => {
+    for (const token of Object.values(LEVEL_TOKENS)) {
+      for (const stop of token.band) {
+        expect(contrastRatio(token.bandFg, stop), `${token.key} band ${stop}`).toBeGreaterThanOrEqual(4.5);
+      }
+    }
+  });
+
+  it("mirror the dark-theme tokens in globals.css", () => {
+    const css = readFileSync(CSS, "utf8").toLowerCase();
+    for (const token of Object.values(LEVEL_TOKENS)) {
+      const name = token.key === "OPS" ? "ops" : String(token.number);
+      expect(css).toContain(`--lvl-${name}-ink: ${token.ink.toLowerCase()};`);
+      expect(css).toContain(`--lvl-${name}-band-fg: ${token.bandFg.toLowerCase()};`);
+      expect(css).toContain(`--lvl-${name}-gradient: linear-gradient(135deg, ${token.band[0].toLowerCase()}, ${token.band[1].toLowerCase()});`);
+    }
+    for (const surface of DARK_SURFACES) expect(css).toContain(surface.toLowerCase());
   });
 
   it("give every level a distinct icon (never colour alone)", () => {

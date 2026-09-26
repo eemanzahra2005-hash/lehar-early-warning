@@ -24,16 +24,53 @@ export interface LevelToken {
   className: string;
   /** Name of the lucide icon rendered by <LevelIcon>. */
   icon: "Wrench" | "Info" | "TriangleAlert" | "OctagonAlert" | "Siren" | "ShieldAlert";
+  /**
+   * Dark theme (Phase 5b). The official colours above are kept for badges;
+   * these say how each level shows up on the navy "command center" surfaces.
+   * `ink` is the level's colour for text, dots and rails ON a dark surface
+   * (black and white cannot both work there, so L5 uses a white ink and
+   * relies on icon + number + name). `band` is the hero gradient, and
+   * `bandFg` the text on it. The tests hold every pair to WCAG AA.
+   */
+  ink: string;
+  band: [string, string];
+  bandFg: string;
 }
 
 export const LEVEL_TOKENS: Record<number, LevelToken> = {
-  0: { number: 0, key: "OPS", bg: "#6B7280", fg: "#FFFFFF", className: "lvl-ops", icon: "Wrench" },
-  1: { number: 1, key: "L1", bg: "#FFFFFF", fg: "#111827", className: "lvl-1", icon: "Info" },
-  2: { number: 2, key: "L2", bg: "#FFD400", fg: "#111827", className: "lvl-2", icon: "TriangleAlert" },
-  3: { number: 3, key: "L3", bg: "#E03131", fg: "#FFFFFF", className: "lvl-3", icon: "OctagonAlert" },
-  4: { number: 4, key: "L4", bg: "#7B2FBF", fg: "#FFFFFF", className: "lvl-4", icon: "Siren" },
-  5: { number: 5, key: "L5", bg: "#0B0B0B", fg: "#FFFFFF", className: "lvl-5", icon: "ShieldAlert" },
+  0: {
+    number: 0, key: "OPS", bg: "#6B7280", fg: "#FFFFFF", className: "lvl-ops", icon: "Wrench",
+    ink: "#CBD5E1", band: ["#6B7280", "#374151"], bandFg: "#FFFFFF",
+  },
+  // L1 is the calm baseline: a deep teal band with a white glow, not a white slab.
+  1: {
+    number: 1, key: "L1", bg: "#FFFFFF", fg: "#111827", className: "lvl-1", icon: "Info",
+    ink: "#F8FAFC", band: ["#115E59", "#0B1A24"], bandFg: "#FFFFFF",
+  },
+  2: {
+    number: 2, key: "L2", bg: "#FFD400", fg: "#111827", className: "lvl-2", icon: "TriangleAlert",
+    ink: "#FFD400", band: ["#FFD400", "#F2A900"], bandFg: "#111827",
+  },
+  3: {
+    number: 3, key: "L3", bg: "#E03131", fg: "#FFFFFF", className: "lvl-3", icon: "OctagonAlert",
+    ink: "#FF6B6B", band: ["#E03131", "#9F1D1D"], bandFg: "#FFFFFF",
+  },
+  4: {
+    number: 4, key: "L4", bg: "#7B2FBF", fg: "#FFFFFF", className: "lvl-4", icon: "Siren",
+    ink: "#C39BF5", band: ["#7B2FBF", "#4A1A7A"], bandFg: "#FFFFFF",
+  },
+  // L5 is black on a dark page: the band gets a pulsing white edge (globals.css).
+  5: {
+    number: 5, key: "L5", bg: "#0B0B0B", fg: "#FFFFFF", className: "lvl-5", icon: "ShieldAlert",
+    ink: "#F1F5F9", band: ["#0B0B0B", "#000000"], bandFg: "#FFFFFF",
+  },
 };
+
+/**
+ * The dark surfaces a level's `ink` is drawn on: the page gradient's two ends
+ * and a glass card (6 % white over the lighter end). Mirrors globals.css.
+ */
+export const DARK_SURFACES = ["#070B14", "#0E1524", "#1C2331"] as const;
 
 /** Levels that interrupt the user with a full-screen takeover (ALERT_LEVELS.md). */
 export const TAKEOVER_MIN_LEVEL = 4;

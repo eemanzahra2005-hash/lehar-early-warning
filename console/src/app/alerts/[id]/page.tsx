@@ -4,12 +4,12 @@ import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useState } from "react";
-import { LevelBadge } from "@/components/Level";
-import { EmptyState, ErrorNotice, Loading } from "@/components/Status";
+import { LevelBadge, levelScope } from "@/components/Level";
+import { LevelBackdrop, PulsingIcon } from "@/components/LevelBand";
+import { EmptyState, ErrorNotice, Skeleton } from "@/components/Status";
 import { useI18n } from "@/i18n/LanguageProvider";
 import { api, findAlertById } from "@/lib/api";
 import { formatDateTime, humanType } from "@/lib/format";
-import { levelToken } from "@/lib/levels";
 import type { AlertResponse } from "@/lib/types";
 import { useApi } from "@/lib/useApi";
 import { useIsAdmin } from "@/lib/useIsAdmin";
@@ -22,11 +22,11 @@ function PayloadTable({ payload }: { payload: Record<string, unknown> }) {
       <table className="w-full text-left text-sm">
         <tbody>
           {entries.map(([key, value]) => (
-            <tr key={key} className="border-b border-slate-100 align-top">
-              <th scope="row" className="py-1.5 pe-4 font-mono font-medium text-slate-700">
+            <tr key={key} className="border-b border-white/5 align-top last:border-0">
+              <th scope="row" className="num py-2 pe-4 font-medium text-muted">
                 {key}
               </th>
-              <td className="py-1.5 font-mono break-all text-slate-900">
+              <td className="num py-2 break-all text-ink">
                 {typeof value === "object" ? JSON.stringify(value) : String(value)}
               </td>
             </tr>
@@ -43,7 +43,6 @@ function AlertDetail({ initial }: { initial: AlertResponse }) {
   const [alert, setAlert] = useState(initial);
   const [ackError, setAckError] = useState<unknown>(null);
   const [acking, setAcking] = useState(false);
-  const token = levelToken(alert.level);
 
   const acknowledge = async () => {
     setAcking(true);
@@ -58,34 +57,45 @@ function AlertDetail({ initial }: { initial: AlertResponse }) {
   };
 
   return (
-    <article className="space-y-5">
-      <header className={`${token.className} level-outline space-y-2 rounded-2xl p-5`}>
-        <LevelBadge level={alert.level} size="lg" />
-        <h1 className="text-2xl font-bold">{pick(alert.title_en, alert.title_ur)}</h1>
-        <p className="text-sm">
-          {alert.district_code} · {humanType(alert.type)} · {t(`status.${alert.status}` as "status.active")}
-        </p>
+    <article className="space-y-6">
+      <header className={`band ${levelScope(alert.level)} overflow-hidden rounded-3xl border border-white/10`}>
+        <LevelBackdrop level={alert.level} />
+        <div className="flex flex-wrap items-center gap-6 p-6 sm:p-8">
+          <div className="flex items-center gap-4">
+            <span className="hero-numeral !text-[clamp(64px,12vw,112px)]" aria-hidden="true">
+              {alert.level}
+            </span>
+            <PulsingIcon level={alert.level} className="h-10 w-10 sm:h-12 sm:w-12" ringClass="p-3" />
+          </div>
+          <div className="min-w-0 flex-1 space-y-3">
+            <LevelBadge level={alert.level} size="lg" />
+            <h1 className="text-2xl font-semibold sm:text-3xl">{pick(alert.title_en, alert.title_ur)}</h1>
+            <p className="text-sm font-medium">
+              {alert.district_code} · {humanType(alert.type)} · {t(`status.${alert.status}` as "status.active")}
+            </p>
+          </div>
+        </div>
       </header>
 
       {/* The body is the rule's fixed template text, shown verbatim (never generated). */}
-      <p className="whitespace-pre-line text-lg">{pick(alert.body_en, alert.body_ur)}</p>
+      <p className="max-w-3xl whitespace-pre-line text-lg leading-relaxed text-ink">{pick(alert.body_en, alert.body_ur)}</p>
 
-      <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm">
-        <dt className="font-semibold">{t("detail.created")}</dt>
-        <dd>{formatDateTime(alert.created_at, lang)}</dd>
+      <dl className="glass grid grid-cols-[auto_1fr] gap-x-6 gap-y-2 p-5 text-sm">
+        <dt className="text-muted">{t("detail.created")}</dt>
+        <dd className="num text-ink">{formatDateTime(alert.created_at, lang)}</dd>
         {alert.resolved_at && (
           <>
-            <dt className="font-semibold">{t("detail.resolved")}</dt>
-            <dd>{formatDateTime(alert.resolved_at, lang)}</dd>
+            <dt className="text-muted">{t("detail.resolved")}</dt>
+            <dd className="num text-ink">{formatDateTime(alert.resolved_at, lang)}</dd>
           </>
         )}
-        <dt className="font-semibold">{t("detail.dedupe")}</dt>
-        <dd className="font-mono break-all" dir="ltr">
+        <dt className="text-muted">{t("detail.dedupe")}</dt>
+        <dd className="num break-all text-ink" dir="ltr">
           {alert.dedupe_key}
         </dd>
       </dl>
 
-      <section className="card space-y-2">
+      <section className="card space-y-3">
         <h2 className="h2">{t("detail.payload")}</h2>
         <PayloadTable payload={alert.payload} />
       </section>
@@ -98,7 +108,8 @@ function AlertDetail({ initial }: { initial: AlertResponse }) {
           {ackError !== null && <ErrorNotice error={ackError} />}
         </div>
       )}
-      {isAdmin && alert.status === "acknowledged" && <p className="text-sm text-green-800">{t("detail.adminAckDone")}</p>}
+      {isAdmin && alert.status === "acknowledged" && <p className="text-sm text-ok">{t("detail.adminAckDone")}</p>}
+      <p className="text-sm font-medium text-muted">{t("disclaimer")}</p>
     </article>
   );
 }
@@ -110,7 +121,7 @@ export default function AlertDetailPage() {
   const result = useApi(() => (Number.isInteger(id) && id > 0 ? findAlertById(id) : Promise.resolve(null)), [id]);
 
   return (
-    <div className="space-y-4">
+    <div className="page space-y-5 py-8">
       <Link href="/alerts" className="btn-secondary">
         <ArrowLeft className="h-4 w-4 rtl:rotate-180" aria-hidden="true" />
         {t("common.back")}
@@ -118,7 +129,7 @@ export default function AlertDetailPage() {
       {result.error ? (
         <ErrorNotice error={result.error} onRetry={result.reload} />
       ) : result.loading ? (
-        <Loading />
+        <Skeleton className="h-48" lines={2} />
       ) : result.data ? (
         <AlertDetail key={result.data.id} initial={result.data} />
       ) : (

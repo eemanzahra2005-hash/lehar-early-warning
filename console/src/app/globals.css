@@ -1,9 +1,19 @@
 @import "tailwindcss";
 
 /*
- * LEHAR level tokens. Hex values mirror backend/app/services/alerts/levels.py
- * (color_hex / text_color_hex); src/lib/__tests__/levels.test.ts fails if
- * they drift. Every pair meets WCAG AA (>= 4.5:1) for normal text.
+ * LEHAR "Command Center" design system (Phase 5b).
+ *
+ * Dark-first: a deep navy -> charcoal page (#070B14 -> #0E1524), glass
+ * cards, and the official level colours shown as glows and gradients.
+ *
+ * Level tokens. The -bg/-fg hex values mirror backend/app/services/alerts/
+ * levels.py (color_hex / text_color_hex), and the -ink / -band tokens mirror
+ * LEVEL_TOKENS in src/lib/levels.ts. src/lib/__tests__/levels.test.ts fails
+ * if any of them drift, or if any pair drops below WCAG AA (4.5:1).
+ *   -bg/-fg      official badge colours (solid pill, AA text)
+ *   -ink         the level's colour for text, dots and rails on a dark surface
+ *   -glow        soft halo in the level's colour (decoration only)
+ *   -gradient    the hero band; -band-fg is the text colour on it
  */
 :root {
   --lvl-ops-bg: #6b7280;
@@ -18,7 +28,61 @@
   --lvl-4-fg: #ffffff;
   --lvl-5-bg: #0b0b0b;
   --lvl-5-fg: #ffffff;
+
+  --lvl-ops-ink: #cbd5e1;
+  --lvl-1-ink: #f8fafc;
+  --lvl-2-ink: #ffd400;
+  --lvl-3-ink: #ff6b6b;
+  --lvl-4-ink: #c39bf5;
+  --lvl-5-ink: #f1f5f9;
+
+  --lvl-ops-glow: rgb(203 213 225 / 0.25);
+  --lvl-1-glow: rgb(153 246 228 / 0.35);
+  --lvl-2-glow: rgb(255 212 0 / 0.4);
+  --lvl-3-glow: rgb(255 107 107 / 0.45);
+  --lvl-4-glow: rgb(195 155 245 / 0.45);
+  --lvl-5-glow: rgb(255 255 255 / 0.35);
+
+  --lvl-ops-gradient: linear-gradient(135deg, #6b7280, #374151);
+  --lvl-1-gradient: linear-gradient(135deg, #115e59, #0b1a24);
+  --lvl-2-gradient: linear-gradient(135deg, #ffd400, #f2a900);
+  --lvl-3-gradient: linear-gradient(135deg, #e03131, #9f1d1d);
+  --lvl-4-gradient: linear-gradient(135deg, #7b2fbf, #4a1a7a);
+  --lvl-5-gradient: linear-gradient(135deg, #0b0b0b, #000000);
+
+  --lvl-ops-band-fg: #ffffff;
+  --lvl-1-band-fg: #ffffff;
+  --lvl-2-band-fg: #111827;
+  --lvl-3-band-fg: #ffffff;
+  --lvl-4-band-fg: #ffffff;
+  --lvl-5-band-fg: #ffffff;
+
+  /* Surfaces (DARK_SURFACES in levels.ts): page ends + glass over it. */
+  --bg-top: #070b14;
+  --bg-bottom: #0e1524;
+  --glass-solid: #1c2331;
+  --glass: rgb(255 255 255 / 0.05);
+  --glass-strong: rgb(255 255 255 / 0.08);
+  --glass-border: rgb(255 255 255 / 0.1);
+  --text: #e6eaf2;
+  --muted: #94a0b2; /* lowest-contrast text allowed: 5.9:1 on glass */
+  --accent: #5eead4; /* teal: links, focus, the LEHAR wave */
+  --ok: #4ade80;
+  --warn: #fbbf24;
+  --danger: #ff6b6b;
+
+  --header-h: 60px;
+  --tabbar-h: 64px;
+  color-scheme: dark;
 }
+
+/* One class per level sets the generic --lvl-* variables components read. */
+.lvl-scope-0 { --lvl-color: var(--lvl-ops-bg); --lvl-ink: var(--lvl-ops-ink); --lvl-glow: var(--lvl-ops-glow); --lvl-gradient: var(--lvl-ops-gradient); --lvl-band-fg: var(--lvl-ops-band-fg); }
+.lvl-scope-1 { --lvl-color: var(--lvl-1-bg); --lvl-ink: var(--lvl-1-ink); --lvl-glow: var(--lvl-1-glow); --lvl-gradient: var(--lvl-1-gradient); --lvl-band-fg: var(--lvl-1-band-fg); }
+.lvl-scope-2 { --lvl-color: var(--lvl-2-bg); --lvl-ink: var(--lvl-2-ink); --lvl-glow: var(--lvl-2-glow); --lvl-gradient: var(--lvl-2-gradient); --lvl-band-fg: var(--lvl-2-band-fg); }
+.lvl-scope-3 { --lvl-color: var(--lvl-3-bg); --lvl-ink: var(--lvl-3-ink); --lvl-glow: var(--lvl-3-glow); --lvl-gradient: var(--lvl-3-gradient); --lvl-band-fg: var(--lvl-3-band-fg); }
+.lvl-scope-4 { --lvl-color: var(--lvl-4-bg); --lvl-ink: var(--lvl-4-ink); --lvl-glow: var(--lvl-4-glow); --lvl-gradient: var(--lvl-4-gradient); --lvl-band-fg: var(--lvl-4-band-fg); }
+.lvl-scope-5 { --lvl-color: var(--lvl-5-bg); --lvl-ink: var(--lvl-5-ink); --lvl-glow: var(--lvl-5-glow); --lvl-gradient: var(--lvl-5-gradient); --lvl-band-fg: var(--lvl-5-band-fg); }
 
 @theme inline {
   --color-lvl-ops: var(--lvl-ops-bg);
@@ -27,9 +91,21 @@
   --color-lvl-3: var(--lvl-3-bg);
   --color-lvl-4: var(--lvl-4-bg);
   --color-lvl-5: var(--lvl-5-bg);
-  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans", Arial, sans-serif;
+  --color-ink: var(--text);
+  --color-muted: var(--muted);
+  --color-accent: var(--accent);
+  --color-ok: var(--ok);
+  --color-warn: var(--warn);
+  --color-danger: var(--danger);
+  --color-glass: var(--glass);
+  --color-line: var(--glass-border);
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, "Segoe UI", Roboto, Arial, sans-serif;
+  --font-display: var(--font-sora), var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-jetbrains), ui-monospace, "Cascadia Mono", Consolas, monospace;
+  --font-urdu: var(--font-nastaliq), "Jameel Noori Nastaleeq", "Noto Naskh Arabic", "Segoe UI", Tahoma, sans-serif;
 }
 
+/* Official solid badges: the AA-proven bg/fg pairs from levels.py. */
 .lvl-ops { background: var(--lvl-ops-bg); color: var(--lvl-ops-fg); }
 .lvl-1 { background: var(--lvl-1-bg); color: var(--lvl-1-fg); }
 .lvl-2 { background: var(--lvl-2-bg); color: var(--lvl-2-fg); }
@@ -37,68 +113,359 @@
 .lvl-4 { background: var(--lvl-4-bg); color: var(--lvl-4-fg); }
 .lvl-5 { background: var(--lvl-5-bg); color: var(--lvl-5-fg); }
 
-/* Level 1 is white on a white page: an outline keeps the badge visible. */
-.level-outline { box-shadow: inset 0 0 0 1px rgb(15 23 42 / 0.25); }
+/* Level 5 is black on a dark page: a thin white edge keeps it visible. */
+.lvl-5.level-outline, .level-outline.lvl-5 { box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.7); }
+.level-outline { box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.12); }
 
-/* Urdu reads best in Nastaliq/Naskh; system fonts only (no font download). */
+html {
+  background: var(--bg-top);
+  -webkit-text-size-adjust: 100%;
+}
+body {
+  min-height: 100dvh;
+  background:
+    radial-gradient(1200px 600px at 85% -10%, rgb(94 234 212 / 0.06), transparent 60%),
+    radial-gradient(900px 500px at -10% 10%, rgb(99 102 241 / 0.06), transparent 60%),
+    linear-gradient(180deg, var(--bg-top) 0%, var(--bg-bottom) 100%);
+  background-attachment: fixed;
+  color: var(--text);
+  font-family: var(--font-sans);
+  overflow-x: hidden;
+}
+
+h1, h2, h3, .font-display {
+  font-family: var(--font-display);
+  letter-spacing: -0.02em;
+}
+
+/* Urdu reads best in Nastaliq; it needs a taller line and a larger size. */
 html[lang="ur"] body,
+html[lang="ur"] h1,
+html[lang="ur"] h2,
+html[lang="ur"] h3,
 .urdu {
-  font-family: "Noto Nastaliq Urdu", "Jameel Noori Nastaleeq", "Noto Naskh Arabic", "Segoe UI", Tahoma, sans-serif;
+  font-family: var(--font-urdu);
+  letter-spacing: 0;
+}
+html[lang="ur"] body { line-height: 2; font-size: 1.0625rem; }
+/* Nastaliq's tall ascenders/descenders collide at Tailwind's tight heading
+   leading; unlayered rules beat the utility layer. */
+html[lang="ur"] h1, html[lang="ur"] h2, html[lang="ur"] h3 { line-height: 1.9; }
+/* English islands inside an Urdu page keep the Latin fonts and rhythm. */
+html[lang="ur"] [lang="en"] { font-family: var(--font-sans); line-height: 1.5; }
+.urdu { line-height: 2.1; }
+/* Urdu lines on an ENGLISH page (the footer disclaimer, the hero's second
+   level name) use the device's own Arabic-script font: the Nastaliq web font
+   is ~240 KB and is only worth downloading once the reader chooses Urdu. */
+html[lang="en"] .urdu {
+  font-family: "Noto Naskh Arabic", "Segoe UI", Tahoma, "Noto Sans Arabic", sans-serif;
   line-height: 1.9;
 }
 
+.num { font-family: var(--font-mono); font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
+
 .skip-link {
   position: absolute;
-  left: -9999px;
+  inset-inline-start: -9999px;
   top: 0.5rem;
-  z-index: 2000;
-  background: #0f172a;
-  color: #fff;
+  z-index: 4000;
+  background: var(--accent);
+  color: #042f2e;
   padding: 0.5rem 1rem;
-  border-radius: 0.375rem;
+  border-radius: 0.75rem;
+  font-weight: 600;
 }
-.skip-link:focus { left: 0.5rem; }
+.skip-link:focus { inset-inline-start: 0.5rem; }
 
 :focus-visible {
-  outline: 3px solid #2563eb;
-  outline-offset: 2px;
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+  border-radius: 6px;
+}
+
+::selection { background: rgb(94 234 212 / 0.3); }
+
+/* Glass surface and hover lift are utilities so components can @apply them. */
+@utility glass {
+  background: var(--glass);
+  border: 1px solid var(--glass-border);
+  border-radius: 1rem;
+  backdrop-filter: blur(16px) saturate(140%);
+  -webkit-backdrop-filter: blur(16px) saturate(140%);
+  box-shadow: 0 1px 0 rgb(255 255 255 / 0.04) inset, 0 20px 40px -24px rgb(0 0 0 / 0.6);
+}
+@utility lift {
+  transition: transform 150ms ease, box-shadow 150ms ease, border-color 150ms ease, background-color 150ms ease;
+  &:hover {
+    transform: translateY(-2px);
+    border-color: rgb(255 255 255 / 0.18);
+    box-shadow: 0 1px 0 rgb(255 255 255 / 0.06) inset, 0 24px 48px -20px rgb(0 0 0 / 0.7);
+  }
 }
 
 @layer components {
-  .btn-primary {
-    @apply inline-flex items-center justify-center gap-2 rounded-md bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-60;
-  }
-  .btn-secondary {
-    @apply inline-flex items-center justify-center gap-1.5 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-800 hover:bg-slate-100;
+  /* 1200 px content column with the 8-pt gutter. */
+  .page {
+    @apply mx-auto w-full max-w-[1200px] px-4 sm:px-6 lg:px-8;
   }
   .card {
-    @apply rounded-xl border border-slate-200 bg-white p-4 shadow-sm;
+    @apply glass p-4 sm:p-6;
   }
+  .btn-primary {
+    @apply lift inline-flex min-h-11 items-center justify-center gap-2 rounded-xl px-5 py-2.5 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-50;
+    background: linear-gradient(135deg, #5eead4, #38bdf8);
+    color: #04201f;
+    box-shadow: 0 8px 24px -10px rgb(94 234 212 / 0.6);
+  }
+  .btn-secondary {
+    @apply lift inline-flex min-h-10 items-center justify-center gap-1.5 rounded-xl px-3.5 py-2 text-sm font-medium;
+    background: var(--glass-strong);
+    border: 1px solid var(--glass-border);
+    color: var(--text);
+  }
+  .btn-secondary:hover { background: rgb(255 255 255 / 0.12); }
   .field-label {
-    @apply mb-1 block text-sm font-medium text-slate-800;
+    @apply mb-1.5 block text-sm font-medium;
+    color: var(--text);
   }
   .field-input {
-    @apply w-full rounded-md border border-slate-400 bg-white px-3 py-2 text-base text-slate-900;
+    @apply w-full rounded-xl px-3.5 py-2.5 text-base;
+    min-height: 44px;
+    background: rgb(7 11 20 / 0.6);
+    border: 1px solid rgb(255 255 255 / 0.16);
+    color: var(--text);
+    transition: border-color 150ms ease, box-shadow 150ms ease;
   }
+  .field-input:hover { border-color: rgb(255 255 255 / 0.26); }
+  .field-input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgb(94 234 212 / 0.2); }
+  .field-input option { background: #0e1524; color: var(--text); }
   .h1 {
-    @apply text-2xl font-bold tracking-tight text-slate-900;
+    @apply text-3xl font-semibold sm:text-4xl;
+    color: #fff;
   }
   .h2 {
-    @apply text-lg font-semibold text-slate-900;
+    @apply text-lg font-semibold sm:text-xl;
+    color: #fff;
+  }
+  .eyebrow {
+    @apply text-xs font-semibold uppercase;
+    letter-spacing: 0.14em;
+    color: var(--muted);
+  }
+  html[lang="ur"] .eyebrow { letter-spacing: 0; text-transform: none; font-size: 0.8125rem; }
+  .muted { color: var(--muted); }
+  .link { color: var(--accent); text-decoration: underline; text-underline-offset: 3px; text-decoration-color: rgb(94 234 212 / 0.4); }
+  .link:hover { text-decoration-color: var(--accent); }
+  .chip {
+    @apply inline-flex min-h-9 items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-medium;
+    border: 1px solid var(--glass-border);
+    background: var(--glass);
+    color: var(--text);
+    transition: background-color 150ms ease, border-color 150ms ease;
+  }
+  .chip:hover { background: rgb(255 255 255 / 0.1); }
+  .chip[aria-pressed="true"], .chip[aria-checked="true"] {
+    background: rgb(94 234 212 / 0.14);
+    border-color: rgb(94 234 212 / 0.55);
+    color: #fff;
+  }
+  /* Level-coloured left rail for alert cards (reads --lvl-ink/--lvl-glow). */
+  .rail {
+    position: relative;
+    overflow: hidden;
+  }
+  .rail::before {
+    content: "";
+    position: absolute;
+    inset-block: 0;
+    inset-inline-start: 0;
+    width: 4px;
+    background: var(--lvl-ink);
+    box-shadow: 0 0 16px 2px var(--lvl-glow);
+  }
+  .dot {
+    display: inline-block;
+    width: 0.625rem;
+    height: 0.625rem;
+    border-radius: 9999px;
+    background: var(--lvl-ink);
+    box-shadow: 0 0 0 3px rgb(255 255 255 / 0.06), 0 0 12px 2px var(--lvl-glow);
   }
 }
 
-/* Level 4/5 takeover: a short colour flash to get attention, then steady.
-   Disabled entirely for people who ask the OS for reduced motion. */
-@keyframes takeover-flash {
-  0%, 100% { filter: none; }
-  50% { filter: brightness(1.6) saturate(1.3); }
+/* --- Hero band ----------------------------------------------------------- */
+
+.band {
+  position: relative;
+  isolation: isolate;
+  color: var(--lvl-band-fg);
+  overflow: hidden;
 }
-.takeover-flash { animation: takeover-flash 0.8s ease-in-out 4; }
-@media (prefers-reduced-motion: reduce) {
-  .takeover-flash { animation: none; }
-  .animate-spin { animation: none; }
+.band-layer {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: var(--lvl-gradient);
+}
+/* Drifting mesh: only DARK and same-hue glows, so the AA contrast measured
+   on the plain gradient can only improve. */
+.band-mesh {
+  position: absolute;
+  inset: -20%;
+  z-index: -1;
+  background:
+    radial-gradient(40% 50% at 20% 30%, var(--lvl-glow), transparent 70%),
+    radial-gradient(45% 55% at 80% 70%, rgb(0 0 0 / 0.28), transparent 70%),
+    radial-gradient(35% 45% at 70% 20%, rgb(0 0 0 / 0.18), transparent 70%);
+  animation: mesh-drift 18s ease-in-out infinite alternate;
+  mix-blend-mode: normal;
+}
+.lvl-scope-2 .band-mesh,
+.lvl-scope-3 .band-mesh {
+  /* Yellow and red are closest to their AA limit: no glow over the text. */
+  background:
+    radial-gradient(45% 55% at 80% 70%, rgb(0 0 0 / 0.22), transparent 70%),
+    radial-gradient(35% 45% at 15% 20%, rgb(0 0 0 / 0.12), transparent 70%);
+}
+.band-noise {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  opacity: 0.08;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.9 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  mix-blend-mode: multiply;
+}
+/* L5: black band, thin white pulsing edge so it never melts into the page. */
+.band-edge {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.85), 0 0 24px rgb(255 255 255 / 0.2);
+  animation: edge-pulse 2.4s ease-in-out infinite;
 }
 
-/* Leaflet map without base tiles: a plain sea-less background. */
-.leaflet-container { background: #f1f5f9; font: inherit; }
+.hero-numeral {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: clamp(72px, 14vw, 160px);
+  line-height: 0.85;
+  letter-spacing: -0.06em;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Pulse ring behind the level icon for Level >= 3. */
+.pulse-ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 9999px;
+  border: 2px solid currentColor;
+  opacity: 0;
+  animation: ring 2s cubic-bezier(0.2, 0.6, 0.3, 1) infinite;
+}
+.pulse-ring.delay { animation-delay: 1s; }
+
+.live-dot {
+  position: relative;
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 9999px;
+  background: currentColor;
+}
+.live-dot::after {
+  content: "";
+  position: absolute;
+  inset: -4px;
+  border-radius: 9999px;
+  border: 1.5px solid currentColor;
+  animation: ring 2s ease-out infinite;
+}
+
+/* Skeleton shimmer while data loads. */
+.skeleton {
+  position: relative;
+  overflow: hidden;
+  background: rgb(255 255 255 / 0.05);
+  border-radius: 0.75rem;
+}
+.skeleton::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, rgb(255 255 255 / 0.07), transparent);
+  animation: shimmer 1.4s ease-in-out infinite;
+}
+
+/* SHAP / stats bars: a glowing track fill. */
+.glow-bar {
+  height: 0.5rem;
+  border-radius: 9999px;
+  background: linear-gradient(90deg, var(--bar-from, #38bdf8), var(--bar-to, #5eead4));
+  box-shadow: 0 0 14px -2px var(--bar-glow, rgb(94 234 212 / 0.55));
+}
+[dir="rtl"] .glow-bar { background: linear-gradient(270deg, var(--bar-from, #38bdf8), var(--bar-to, #5eead4)); }
+
+@keyframes mesh-drift {
+  0% { transform: translate3d(-3%, -2%, 0) scale(1); }
+  100% { transform: translate3d(3%, 2%, 0) scale(1.08); }
+}
+@keyframes ring {
+  0% { transform: scale(0.85); opacity: 0.7; }
+  100% { transform: scale(1.7); opacity: 0; }
+}
+@keyframes edge-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.45; }
+}
+@keyframes shimmer {
+  100% { transform: translateX(100%); }
+}
+
+/* Everything decorative stops for people who ask the OS for less motion.
+   (framer-motion follows the same setting through <MotionConfig>.) */
+@media (prefers-reduced-motion: reduce) {
+  .band-mesh, .pulse-ring, .live-dot::after, .skeleton::after, .band-edge, .animate-spin { animation: none !important; }
+  .band-edge { opacity: 1; }
+  .lift, .lift:hover { transform: none !important; transition: none; }
+  html { scroll-behavior: auto; }
+}
+
+/* --- Leaflet on the dark theme (no base tiles, ever) -------------------- */
+/* Doubled class: leaflet.css (imported later, by the map chunk) sets #ddd. */
+.leaflet-container.leaflet-container {
+  background: radial-gradient(ellipse at center, #0f1a2e 0%, #070b14 75%);
+  font: inherit;
+}
+.leaflet-tooltip.lehar-tip {
+  background: rgb(14 21 36 / 0.92);
+  color: var(--text);
+  border: 1px solid var(--glass-border);
+  border-radius: 10px;
+  padding: 6px 10px;
+  box-shadow: 0 12px 24px -10px rgb(0 0 0 / 0.7);
+  backdrop-filter: blur(8px);
+  font-weight: 500;
+}
+.leaflet-tooltip.lehar-tip::before { display: none; }
+.leaflet-bar.leaflet-bar a, .leaflet-bar.leaflet-bar a:hover {
+  background: rgb(14 21 36 / 0.9);
+  color: var(--text);
+  border-color: var(--glass-border);
+}
+.leaflet-interactive.district-path { transition: fill-opacity 150ms ease; }
+.leaflet-interactive.district-path:hover { filter: drop-shadow(0 0 6px rgb(255 255 255 / 0.55)); }
+
+/* Mobile: leave room for the bottom tab bar (and the iOS home indicator). */
+.pb-tabbar { padding-bottom: calc(var(--tabbar-h) + env(safe-area-inset-bottom) + 16px); }
+@media (min-width: 768px) {
+  .pb-tabbar { padding-bottom: 0; }
+}
+
+/* Home mini-map: a white outline on hover; CSS beats the SVG attributes. */
+.mini-district { cursor: pointer; transition: stroke-width 150ms ease; }
+.mini-district:hover { stroke: #ffffff; stroke-opacity: 1; stroke-width: 2.2; }
+
+/* Bars grow from the reading start: left in English, right in Urdu. */
+[dir="rtl"] { --origin: right; }

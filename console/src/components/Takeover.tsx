@@ -1,11 +1,12 @@
 "use client";
 
+import { m } from "framer-motion";
 import { Volume2, VolumeX } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useI18n } from "@/i18n/LanguageProvider";
-import { levelToken } from "@/lib/levels";
 import type { ActiveAlertSummary } from "@/lib/types";
-import { LevelIcon, useLevelLabel } from "./Level";
+import { levelScope, useLevelLabel } from "./Level";
+import { LevelBackdrop, PulsingIcon } from "./LevelBand";
 import { useLevels } from "./LevelsProvider";
 
 /*
@@ -85,8 +86,17 @@ export function Takeover({ alerts, onAcknowledge }: TakeoverProps) {
     if (current) ackButton.current?.focus();
   }, [current]);
 
+  // The page behind must not scroll while the takeover is up.
+  useEffect(() => {
+    if (!current) return;
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = previous;
+    };
+  }, [current]);
+
   if (!current || current.alert_id === null) return null;
-  const token = levelToken(current.level);
   const meta = levels[current.level];
   const actions = meta ? (lang === "ur" ? meta.actions_ur : meta.actions_en) : [];
   const alertId = current.alert_id;
@@ -98,52 +108,69 @@ export function Takeover({ alerts, onAcknowledge }: TakeoverProps) {
   };
 
   return (
-    <div
+    <m.div
       role="alertdialog"
       aria-modal="true"
       aria-labelledby="takeover-title"
       aria-describedby="takeover-body"
-      className={`${token.className} takeover-flash fixed inset-0 z-[3000] overflow-y-auto`}
+      className={`band ${levelScope(current.level)} fixed inset-0 z-[3000] overflow-y-auto`}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.2 }}
     >
-      <div className="mx-auto flex min-h-full max-w-2xl flex-col gap-5 px-5 py-8">
-        <div className="flex items-center justify-between gap-3">
-          <p className="text-sm font-semibold uppercase tracking-wider">{t("takeover.label")}</p>
+      <LevelBackdrop level={current.level} />
+      <m.div
+        className="mx-auto flex min-h-full max-w-2xl flex-col gap-6 px-5 py-8 sm:py-12"
+        initial={{ opacity: 0, y: 40, scale: 0.94 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        transition={{ type: "spring", stiffness: 260, damping: 22, delay: 0.05 }}
+      >
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <p className="inline-flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.16em] rtl:tracking-normal">
+            <span className="live-dot" aria-hidden="true" />
+            {t("takeover.label")}
+          </p>
           <button
             type="button"
             onClick={() => setSound((s) => !s)}
             aria-pressed={sound}
-            className="inline-flex items-center gap-2 rounded-md border border-current px-3 py-1.5 text-sm font-medium"
+            className="inline-flex min-h-11 items-center gap-2 rounded-full border border-current bg-black/20 px-4 py-2 text-sm font-semibold backdrop-blur"
           >
             {sound ? <Volume2 className="h-4 w-4" aria-hidden="true" /> : <VolumeX className="h-4 w-4" aria-hidden="true" />}
             {t("takeover.sound")}: {sound ? t("takeover.soundOn") : t("takeover.soundOff")}
           </button>
         </div>
 
-        <div className="flex items-center gap-4">
-          <span className="text-[7rem] font-black leading-none" aria-hidden="true">
+        <div className="flex items-center gap-6">
+          <span className="hero-numeral" aria-hidden="true">
             {current.level}
           </span>
-          <LevelIcon level={current.level} className="h-20 w-20" />
+          <PulsingIcon level={current.level} className="h-16 w-16 sm:h-20 sm:w-20" ringClass="p-4" />
         </div>
 
         <div id="takeover-title" aria-live="assertive">
-          <p className="text-3xl font-bold">{label}</p>
+          <p className="font-display text-3xl font-semibold sm:text-4xl">{label}</p>
           <p className="mt-1 text-2xl font-semibold">{current.district}</p>
         </div>
 
-        <div id="takeover-body" className="space-y-4">
-          <p className="text-xl">{pick(current.title_en, current.title_ur)}</p>
+        <div id="takeover-body" className="space-y-5">
+          <p className="text-xl font-medium">{pick(current.title_en, current.title_ur)}</p>
           {actions.length > 0 && (
-            <div>
-              <h2 className="mb-2 text-lg font-bold">{t("board.whatToDo")}</h2>
-              <ol className="list-decimal space-y-2 ps-6 text-lg">
-                {actions.map((action) => (
-                  <li key={action}>{action}</li>
+            <div className="rounded-2xl border border-white/25 bg-black/25 p-5 backdrop-blur-sm">
+              <h2 className="mb-3 text-lg font-semibold">{t("board.whatToDo")}</h2>
+              <ol className="space-y-3 text-lg">
+                {actions.map((action, i) => (
+                  <li key={action} className="flex gap-3">
+                    <span className="num grid h-7 w-7 shrink-0 place-items-center rounded-full border border-current text-sm font-semibold">
+                      {i + 1}
+                    </span>
+                    <span>{action}</span>
+                  </li>
                 ))}
               </ol>
             </div>
           )}
-          {alerts.length > 1 && <p className="font-medium">{t("takeover.moreAlerts", { n: alerts.length - 1 })}</p>}
+          {alerts.length > 1 && <p className="font-semibold">{t("takeover.moreAlerts", { n: alerts.length - 1 })}</p>}
         </div>
 
         <div className="mt-auto space-y-3 pt-4">
@@ -151,14 +178,14 @@ export function Takeover({ alerts, onAcknowledge }: TakeoverProps) {
             ref={ackButton}
             type="button"
             onClick={acknowledge}
-            className="w-full rounded-lg bg-white px-5 py-4 text-lg font-bold text-slate-900 ring-2 ring-black"
+            className="lift w-full rounded-2xl bg-white px-5 py-4 text-lg font-bold text-slate-900 shadow-[0_12px_40px_-8px_rgb(0_0_0/0.6)] ring-2 ring-black/80"
           >
             {t("takeover.acknowledge")}
           </button>
-          <p className="text-sm">{t("takeover.ackNote")}</p>
+          <p className="text-sm font-medium">{t("takeover.ackNote")}</p>
           <p className="text-sm font-semibold">{t("disclaimer")}</p>
         </div>
-      </div>
-    </div>
+      </m.div>
+    </m.div>
   );
 }

@@ -53,6 +53,64 @@ languages (CLAUDE.md rule 12).
 - **Synthetic data is labelled** on `/predict`, `/explain` and `/admin`
   (CLAUDE.md rule 13).
 
+## Design system — "LEHAR Command Center" (Phase 5b)
+
+Dark-first, glass surfaces, the official level colours shown as glows. All
+tokens live in `src/app/globals.css`; the level ones are mirrored in
+`LEVEL_TOKENS` (`src/lib/levels.ts`) and **tested** (`levels.test.ts`).
+
+| Layer | What it is |
+|---|---|
+| Page | Navy → charcoal gradient `#070B14 → #0E1524`, 1200 px content column (`.page`), 8-pt spacing |
+| Surfaces | `.glass` / `.card`: 5 % white fill, 1 px 10 % white border, 16 px backdrop blur, `rounded-2xl`; `.lift` = 2 px / 150 ms hover lift |
+| Type | `next/font` (downloaded at **build** time and self-hosted; the browser never calls Google): Sora (headings), Inter (body), JetBrains Mono (`.num`: numbers, timestamps), Noto Nastaliq Urdu (Urdu UI, taller leading). The hero numeral is `clamp(72px, 14vw, 160px)` |
+| Level tokens | per level: `--lvl-N-bg/-fg` (official badge pair from `levels.py`), `--lvl-N-ink` (the level's colour for text, dots and rails on dark), `--lvl-N-glow`, `--lvl-N-gradient` + `--lvl-N-band-fg` (hero band). `.lvl-scope-N` sets the generic `--lvl-*` variables |
+| Motion | framer-motion through `<LazyMotion strict>` (the feature bundle loads after first paint) + `<MotionConfig reducedMotion="user">`; the CSS animations stop under `prefers-reduced-motion` |
+
+**Contrast is enforced by tests.** They fail if a level's badge pair, its
+`ink` on any of the three dark surfaces (`#070B14`, `#0E1524`, glass
+`#1C2331`), or its hero-band text on *either* gradient stop drops below
+WCAG AA 4.5:1. L3's red band has the least margin (4.51:1), so the hero's
+drifting mesh only ever *darkens* (`.band-mesh`).
+
+How each level reads on the dark theme:
+
+- **L1 calm**: deep teal band, white glow, green check. On the maps, calm districts get only a faint white wash, so the alerting ones stand out
+- **L2 / L3 / L4**: official yellow / red / purple, used for the band gradient and for glowing rails, dots and map strokes
+- **L5 black**: black band with a thin **pulsing white edge** (`.band-edge`) and a white ink, so it never disappears into the page
+- **Never colour alone**: every level is still shown as icon + number + name (`LevelBadge`). Charts pair colour with line style (solid measured vs dashed forecast), arrows (SHAP up/down) or printed numbers
+
+Motion:
+
+- Route changes fade and rise over 250 ms. The first load paints without this, to protect LCP
+- Switching EN ↔ UR flips the layout to RTL with a soft fade instead of a remount, so forms keep their input
+- Lists reveal with a 40 ms stagger, and counters tick up (written straight to the DOM, so no re-renders)
+- The hero gradient cross-fades when the national level changes, and pulse rings appear from Level 3
+- The Level 4/5 takeover springs in
+- The nav underline, tab indicator, language thumb and filter chips slide between options
+- Skeletons shimmer while data loads
+
+Layout: a sticky translucent header holds the wave wordmark, the nav and
+the EN | اردو pill. Below 768 px the nav becomes a **bottom tab bar**
+(Alerts now, Map, Alert feed, Subscribe, and More for Irrigation, Explain
+and Admin). From 768 to 1023 px the top nav shows icons only, keeping the
+labels for screen readers. From 768 px up, the EN + UR disclaimer strip is
+pinned to the bottom of the viewport. On phones it ends every page instead:
+pinned, a two-line strip plus the tab bar would cover a fifth of a small
+screen.
+
+Performance:
+
+- The home mini-map is plain SVG from `public/geo/minimap.json` (50 KB, 18 KB gzip). `npm run minimap` pre-simplifies it from the 900 KB GeoJSON, and the page fetches it only once it scrolls into view
+- Leaflet loads only on `/map`, and Recharts only in the map's district panel (lazily)
+- `/explain` and `/predict` draw SHAP values as CSS glow bars, with no chart library
+- On English pages the few Urdu lines use the device's Arabic-script font. The 240 KB Nastaliq file downloads only once a reader picks Urdu
+
+Limits the design keeps to:
+
+- The forecast chart shades the forecast *days*, not an uncertainty band. The API returns no band, and the console never invents one
+- The subscribe step indicators never mark a step that happens outside the console (pressing Start in Telegram, clicking the email link) as done
+
 ## "Server is waking up"
 
 The backend runs on Render's free tier, which sleeps after ~15 minutes idle
@@ -88,7 +146,7 @@ Quality gates (all run in CI, job `console` in `.github/workflows/ci.yml`):
 ```bash
 npm run lint          # ESLint (next/core-web-vitals + typescript)
 npx tsc --noEmit      # types
-npm test              # vitest: level mapping, i18n completeness, API retry, flood series
+npm test              # vitest: level mapping + dark-theme contrast, i18n completeness, API retry, flood series
 npm run build         # production build
 ```
 
@@ -112,9 +170,20 @@ No paid Vercel feature is used (CLAUDE.md rule 11).
 
 ## Screenshots
 
-`../docs/screenshots/` is reserved for console screenshots. It is empty
-for now and will be filled once the console runs against the deployed
-backend (Phase 6).
+`../docs/screenshots/` holds phone (360 px) and desktop (1280 px) captures
+of `/`, `/map`, `/alerts` and `/subscribe`. They were taken against a local
+backend and show real API data (on that day every district was calm at
+Level 1). To retake them, use the optional Playwright script. Playwright is
+not a dependency:
+
+```bash
+npm run build && npm start                  # console on :3000, backend on :8000
+npm i --no-save playwright@1.63.0           # once; package.json stays untouched
+npx playwright install chromium             # once, if no Chrome/Chromium is installed
+npm run screenshots                         # writes ../docs/screenshots/*.png
+```
+
+Without Playwright, the script prints these steps and exits 0.
 
 ## Project layout
 
@@ -122,7 +191,10 @@ backend (Phase 6).
 console/
 ├── public/geo/pakistan_districts.geojson   # copied from frontend/assets/geo
 ├── src/app/                  # one folder per route (App Router)
-├── src/components/           # header/footer, level badge, takeover, map, charts
+├── public/geo/minimap.json                 # simplified SVG paths (npm run minimap)
+├── scripts/                  # build-minimap.mjs, screenshots.mjs (optional, Playwright)
+├── src/components/           # chrome (header, tab bar, footer), Motion, LevelBand, level badge,
+│                             # takeover, MiniMap, DistrictMap, charts, ShapBars, QrCode, Steps, Chips
 ├── src/i18n/                 # EN/UR dictionary + language provider (RTL)
 └── src/lib/                  # api.ts (typed client), levels.ts, geo.ts, flood.ts
 ```

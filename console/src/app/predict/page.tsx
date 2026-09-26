@@ -1,9 +1,12 @@
 "use client";
 
-import { ArrowDown, ArrowUp } from "lucide-react";
+import { m } from "framer-motion";
+import { ArrowUpRight, CloudSun, Droplets, FlaskConical } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
-import { ErrorNotice, Loading } from "@/components/Status";
+import { CountUp, EASE_OUT } from "@/components/Motion";
+import { ShapBars } from "@/components/ShapBars";
+import { ErrorNotice, Skeleton } from "@/components/Status";
 import { useI18n } from "@/i18n/LanguageProvider";
 import { api } from "@/lib/api";
 import { formatNumber } from "@/lib/format";
@@ -32,7 +35,7 @@ function NumberField({
       <span className="field-label">{label}</span>
       <input
         type="number"
-        className="field-input"
+        className="field-input num"
         dir="ltr"
         required
         min={min}
@@ -45,89 +48,112 @@ function NumberField({
   );
 }
 
+/** An on/off switch that is still a real checkbox underneath (keyboard + forms work as before). */
+function Switch({ label, checked, onChange }: { label: string; checked: boolean; onChange: (v: boolean) => void }) {
+  return (
+    <label className="flex min-h-11 cursor-pointer items-center justify-between gap-4 rounded-xl border border-line bg-white/[0.03] px-3.5 py-2 has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-accent">
+      <span className="text-sm text-ink">{label}</span>
+      <input type="checkbox" role="switch" checked={checked} onChange={(e) => onChange(e.target.checked)} className="peer sr-only" />
+      <span
+        aria-hidden="true"
+        className={`relative h-6 w-11 shrink-0 rounded-full transition-colors ${checked ? "bg-accent shadow-[0_0_14px_-2px_rgb(94_234_212/0.7)]" : "bg-white/15"}`}
+      >
+        <span
+          className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-[inset-inline-start] duration-200 ${checked ? "start-[22px]" : "start-0.5"}`}
+        />
+      </span>
+    </label>
+  );
+}
+
 function Result({ result }: { result: PredictResponse }) {
   const { t } = useI18n();
   // Largest absolute SHAP contributions first: the "top reasons".
   const reasons = [...(result.explanation?.contributions ?? [])]
     .sort((a, b) => Math.abs(b.contribution_mm) - Math.abs(a.contribution_mm))
     .slice(0, TOP_REASONS);
-  const maxAbs = Math.max(...reasons.map((r) => Math.abs(r.contribution_mm)), 0.0001);
 
   return (
-    <section className="card space-y-4" aria-live="polite" aria-labelledby="result-title">
+    <m.section
+      className="card space-y-6"
+      aria-live="polite"
+      aria-labelledby="result-title"
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.35, ease: EASE_OUT }}
+    >
       <div>
-        <h2 id="result-title" className="text-sm font-semibold text-slate-600">
+        <h2 id="result-title" className="eyebrow">
           {t("predict.result")}
         </h2>
-        <p className="text-4xl font-black">
-          {formatNumber(result.irrigation_recommendation_mm)} <span className="text-xl font-semibold">mm</span>
+        <p className="mt-2 flex items-baseline gap-2 text-white">
+          <Droplets className="h-8 w-8 self-center text-accent" aria-hidden="true" />
+          <CountUp value={result.irrigation_recommendation_mm} decimals={1} className="num font-display text-6xl font-semibold tracking-tight" />
+          <span className="text-xl font-medium text-muted">mm</span>
         </p>
-        <p className="text-sm text-slate-700">
-          {t("predict.source")}: <code>{result.source}</code>
-          {result.model_version && <> · model {result.model_version}</>}
+        <p className="mt-2 text-sm text-muted">
+          {t("predict.source")}: <code className="num text-ink">{result.source}</code>
+          {result.model_version && (
+            <>
+              {" "}
+              · model <span className="num text-ink">{result.model_version}</span>
+            </>
+          )}
         </p>
-        {result.reason && <p className="mt-2 rounded-md bg-amber-50 p-2 text-sm text-amber-950">{result.reason}</p>}
-        {result.confidence && (
-          <p className="text-sm text-slate-700">
-            {t("predict.interval", {
-              lo: formatNumber(result.confidence.interval_mm[0]),
-              hi: formatNumber(result.confidence.interval_mm[1]),
-            })}
-          </p>
-        )}
-        {result.risk && (
-          <p className="text-sm text-slate-700">
-            {t("predict.risk", { band: result.risk.band, score: formatNumber(result.risk.score, 0) })}
-          </p>
-        )}
-        {result.soil_moisture_note && <p className="text-sm text-slate-700">{result.soil_moisture_note}</p>}
+        {result.reason && <p className="mt-3 rounded-xl border border-amber-300/25 bg-amber-400/10 p-3 text-sm text-amber-100">{result.reason}</p>}
+        <div className="mt-3 space-y-1 text-sm text-muted">
+          {result.confidence && (
+            <p className="num">
+              {t("predict.interval", {
+                lo: formatNumber(result.confidence.interval_mm[0]),
+                hi: formatNumber(result.confidence.interval_mm[1]),
+              })}
+            </p>
+          )}
+          {result.risk && <p>{t("predict.risk", { band: result.risk.band, score: formatNumber(result.risk.score, 0) })}</p>}
+          {result.soil_moisture_note && <p>{result.soil_moisture_note}</p>}
+        </div>
       </div>
 
       <div>
-        <h3 className="mb-2 font-semibold">{t("predict.reasons")}</h3>
+        <h3 className="eyebrow mb-3">{t("predict.reasons")}</h3>
         {reasons.length === 0 ? (
-          <p className="text-sm text-slate-600">{t("predict.noExplanation")}</p>
+          <p className="text-sm text-muted">{t("predict.noExplanation")}</p>
         ) : (
-          <ul className="space-y-2">
-            {reasons.map((r) => {
+          <ShapBars
+            rows={reasons.map((r) => {
               const up = r.contribution_mm >= 0;
-              return (
-                <li key={r.feature} className="text-sm">
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="flex items-center gap-1 font-medium">
-                      {up ? <ArrowUp className="h-4 w-4" aria-hidden="true" /> : <ArrowDown className="h-4 w-4" aria-hidden="true" />}
-                      {r.feature} = <span dir="ltr">{String(r.value)}</span>
-                    </span>
-                    <span dir="ltr">
-                      {up ? "+" : ""}
-                      {formatNumber(r.contribution_mm, 2)} mm ({up ? t("predict.increases") : t("predict.decreases")})
-                    </span>
-                  </div>
-                  <div className="mt-1 h-2 rounded bg-slate-100" aria-hidden="true">
-                    <div
-                      className={`h-2 rounded ${up ? "bg-blue-700" : "bg-orange-600"}`}
-                      style={{ width: `${(Math.abs(r.contribution_mm) / maxAbs) * 100}%` }}
-                    />
-                  </div>
-                </li>
-              );
+              return {
+                label: (
+                  <>
+                    {r.feature} = <span dir="ltr">{String(r.value)}</span>
+                  </>
+                ),
+                valueText: `${up ? "+" : ""}${formatNumber(r.contribution_mm, 2)} mm (${up ? t("predict.increases") : t("predict.decreases")})`,
+                magnitude: r.contribution_mm,
+                direction: up ? "up" : "down",
+              };
             })}
-          </ul>
+          />
         )}
       </div>
 
-      <div className="text-sm text-slate-700">
-        <h3 className="font-semibold">{t("predict.weather")}</h3>
-        <p dir="ltr">
+      <div className="rounded-xl border border-line bg-white/[0.03] p-4 text-sm">
+        <h3 className="mb-1 flex items-center gap-2 font-semibold text-white">
+          <CloudSun className="h-4 w-4 text-accent" aria-hidden="true" />
+          {t("predict.weather")}
+        </h3>
+        <p className="num text-muted" dir="ltr">
           {formatNumber(result.weather_used.temperature_c)} °C · {formatNumber(result.weather_used.humidity_pct, 0)}% ·{" "}
           {formatNumber(result.weather_used.rainfall_mm)} mm rain · ET0 {formatNumber(result.weather_used.evapotranspiration_mm)} mm ({result.weather_used.source})
         </p>
       </div>
-      <p className="text-sm font-semibold text-slate-800">{t("common.synthetic")}</p>
-      <Link href="/explain" className="text-sm text-blue-800 underline">
+      <p className="text-sm font-semibold text-amber-100">{t("common.synthetic")}</p>
+      <Link href="/explain" className="link inline-flex items-center gap-1 text-sm">
         {t("predict.seeExplain")}
+        <ArrowUpRight className="h-4 w-4 rtl:-scale-x-100" aria-hidden="true" />
       </Link>
-    </section>
+    </m.section>
   );
 }
 
@@ -169,66 +195,78 @@ export default function PredictPage() {
     }
   };
 
-  if (meta.error) return <ErrorNotice error={meta.error} onRetry={meta.reload} />;
-  if (!meta.data) return <Loading />;
-
   return (
-    <div className="space-y-5">
-      <h1 className="h1">{t("predict.title")}</h1>
-      <p className="text-sm font-medium text-slate-700">{t("common.synthetic")}</p>
-      <div className="grid gap-5 lg:grid-cols-2">
-        <form onSubmit={submit} className="card space-y-3">
-          <label className="block">
-            <span className="field-label">{t("common.district")}</span>
-            <select className="field-input" required value={form.district} onChange={(e) => set("district", e.target.value)}>
-              <option value="">—</option>
-              {meta.data.districts.map((d) => (
-                <option key={d} value={d}>
-                  {d}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="block">
-            <span className="field-label">{t("predict.crop")}</span>
-            <select className="field-input" required value={form.crop_type} onChange={(e) => set("crop_type", e.target.value)}>
-              <option value="">—</option>
-              {meta.data.crops.map((c) => (
-                <option key={c} value={c}>
-                  {c}
-                </option>
-              ))}
-            </select>
-          </label>
-          {/* Bounds mirror PredictRequest's Field(ge, le) in schemas.py. */}
-          <NumberField label={t("predict.soil")} value={form.soil_moisture_pct} onChange={(v) => set("soil_moisture_pct", v)} min={0} max={100} />
-          <NumberField label={t("predict.canal")} value={form.canal_flow_cusecs} onChange={(v) => set("canal_flow_cusecs", v)} min={0} max={2000} step={1} />
-          <label className="flex items-center gap-2">
-            <input type="checkbox" checked={form.use_live_soil} onChange={(e) => set("use_live_soil", e.target.checked)} className="h-4 w-4" />
-            {t("predict.liveSoil")}
-          </label>
-          <label className="flex items-center gap-2">
-            <input type="checkbox" checked={form.use_live_weather} onChange={(e) => set("use_live_weather", e.target.checked)} className="h-4 w-4" />
-            {t("predict.liveWeather")}
-          </label>
-          {!form.use_live_weather && (
-            <div className="grid grid-cols-2 gap-3">
-              <NumberField label={t("predict.temp")} value={form.manual_temperature_c ?? NaN} onChange={(v) => set("manual_temperature_c", v)} min={-10} max={55} />
-              <NumberField label={t("predict.humidity")} value={form.manual_humidity_pct ?? NaN} onChange={(v) => set("manual_humidity_pct", v)} min={0} max={100} />
-              <NumberField label={t("predict.rain")} value={form.manual_rainfall_mm ?? NaN} onChange={(v) => set("manual_rainfall_mm", v)} min={0} max={400} />
-              <NumberField label={t("predict.et")} value={form.manual_evapotranspiration_mm ?? NaN} onChange={(v) => set("manual_evapotranspiration_mm", v)} min={0} max={20} />
-            </div>
-          )}
-          <button type="submit" className="btn-primary w-full" disabled={busy}>
-            {t("predict.run")}
-          </button>
-        </form>
-        <div className="space-y-3">
-          {busy && <Loading />}
-          {error !== null && <ErrorNotice error={error} />}
-          {result && <Result result={result} />}
-        </div>
+    <div className="page space-y-6 py-8">
+      <div className="space-y-3">
+        <h1 className="h1">{t("predict.title")}</h1>
+        <p className="inline-flex items-center gap-2 rounded-full border border-amber-300/25 bg-amber-400/10 px-3 py-1 text-sm font-medium text-amber-100">
+          <FlaskConical className="h-4 w-4" aria-hidden="true" />
+          {t("common.synthetic")}
+        </p>
       </div>
+      {meta.error ? (
+        <ErrorNotice error={meta.error} onRetry={meta.reload} />
+      ) : !meta.data ? (
+        <div className="grid gap-6 lg:grid-cols-2">
+          <Skeleton className="h-96" />
+        </div>
+      ) : (
+        <div className="grid items-start gap-6 lg:grid-cols-2">
+          <form onSubmit={submit} className="card space-y-4">
+            <div className="grid gap-4 sm:grid-cols-2">
+              <label className="block">
+                <span className="field-label">{t("common.district")}</span>
+                <select className="field-input" required value={form.district} onChange={(e) => set("district", e.target.value)}>
+                  <option value="">—</option>
+                  {meta.data.districts.map((d) => (
+                    <option key={d} value={d}>
+                      {d}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="block">
+                <span className="field-label">{t("predict.crop")}</span>
+                <select className="field-input" required value={form.crop_type} onChange={(e) => set("crop_type", e.target.value)}>
+                  <option value="">—</option>
+                  {meta.data.crops.map((c) => (
+                    <option key={c} value={c}>
+                      {c}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              {/* Bounds mirror PredictRequest's Field(ge, le) in schemas.py. */}
+              <NumberField label={t("predict.soil")} value={form.soil_moisture_pct} onChange={(v) => set("soil_moisture_pct", v)} min={0} max={100} />
+              <NumberField label={t("predict.canal")} value={form.canal_flow_cusecs} onChange={(v) => set("canal_flow_cusecs", v)} min={0} max={2000} step={1} />
+            </div>
+            <Switch label={t("predict.liveSoil")} checked={!!form.use_live_soil} onChange={(v) => set("use_live_soil", v)} />
+            <Switch label={t("predict.liveWeather")} checked={form.use_live_weather} onChange={(v) => set("use_live_weather", v)} />
+            {!form.use_live_weather && (
+              <m.div
+                className="grid grid-cols-2 gap-4"
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: "auto" }}
+                transition={{ duration: 0.25, ease: EASE_OUT }}
+              >
+                <NumberField label={t("predict.temp")} value={form.manual_temperature_c ?? NaN} onChange={(v) => set("manual_temperature_c", v)} min={-10} max={55} />
+                <NumberField label={t("predict.humidity")} value={form.manual_humidity_pct ?? NaN} onChange={(v) => set("manual_humidity_pct", v)} min={0} max={100} />
+                <NumberField label={t("predict.rain")} value={form.manual_rainfall_mm ?? NaN} onChange={(v) => set("manual_rainfall_mm", v)} min={0} max={400} />
+                <NumberField label={t("predict.et")} value={form.manual_evapotranspiration_mm ?? NaN} onChange={(v) => set("manual_evapotranspiration_mm", v)} min={0} max={20} />
+              </m.div>
+            )}
+            <button type="submit" className="btn-primary w-full" disabled={busy}>
+              <Droplets className="h-4 w-4" aria-hidden="true" />
+              {t("predict.run")}
+            </button>
+          </form>
+          <div className="space-y-4">
+            {busy && <Skeleton className="h-72" />}
+            {error !== null && <ErrorNotice error={error} />}
+            {result && <Result result={result} />}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

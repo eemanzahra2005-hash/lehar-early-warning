@@ -661,7 +661,7 @@ The first real scheduled run is a Phase 6 check.
 > `frontend/`.
 
 - [~] New Next.js console in `console/` talking to this API. Scaffold +
-      pages done in 5a
+      pages done in 5a, premium redesign in 5b; live deploy is Phase 6
 - [x] Flood views carry the research-advisory disclaimer (CLAUDE.md rule 12).
       Every console page shows it in the footer in EN + UR
 - [x] This repo's vanilla-JS frontend stays as-is (`frontend/` untouched in 5a)
@@ -723,6 +723,75 @@ the development machine. The pages were checked by build, typecheck, lint,
 unit tests and HTTP smoke tests only. Leaflet rendering, the takeover
 (which needs a real level-4/5 alert) and the RTL layout still need a manual
 look (with screenshots into `docs/screenshots/`) before Phase 6.
+
+## Phase 5b — Console premium redesign ("Command Center") — **DONE**
+
+A complete visual redesign of `console/`. Routes, API calls, data handling
+and the honesty rules are unchanged. **No backend code changed.** Details:
+the design-system section of [console/README.md](console/README.md).
+
+- [x] Dark-first design system: navy → charcoal page, glass cards, a
+      1200 px column. Fonts are Sora, Inter, JetBrains Mono and Noto
+      Nastaliq Urdu via `next/font`, self-hosted at build time
+- [x] Level tokens for the dark theme (`ink`, `glow`, hero `gradient`,
+      `bandFg`) in `levels.ts` and `globals.css`. New tests hold each level's
+      ink to WCAG AA on three dark surfaces, and its hero text to AA on both
+      gradient stops:
+      - L1 calm = teal band, white glow and a green check
+      - L5 black = black band with a pulsing white edge
+      - every level is still shown as icon + number + name
+- [x] Motion with framer-motion (`LazyMotion`, reduced motion respected):
+      - route fade/rise, staggered lists, animated counters
+      - hero cross-fade when the level changes, pulse rings from L3
+      - spring-in takeover for L4/5 (sound still off by default, acknowledge
+        still per device)
+      - sliding nav, tab and chip indicators; shimmer skeletons
+- [x] Chrome: sticky blurred header with an SVG wave wordmark and an
+      EN | اردو pill; bottom tab bar under 768 px; EN + UR disclaimer strip
+      on every page (pinned from 768 px up)
+- [x] Pages redesigned:
+      - `/`: full-bleed level hero, level strip with animated counts, SVG
+        mini-map, alert list with level rails, all-clear notices, levels
+        stepper
+      - `/map`: full-height dark choropleth, hover glow, spring side panel,
+        Recharts area chart with the forecast days shaded
+      - `/alerts`: timeline grouped by day, animated filter chips
+      - `/alerts/[id]`: level header band
+      - `/subscribe`: Telegram QR code (via `uqr`), step indicators,
+        animated success state
+      - `/predict` and `/explain`: glass forms, glowing SHAP bars
+      - `/admin`: KPI tiles, bar charts, PSI bars
+- [x] New dependencies, pinned exactly: `framer-motion` 13.4.4, `uqr` 0.1.3.
+      Playwright is **not** a dependency (the screenshot script is optional)
+- [x] Quality gates: `npm run lint`, `npx tsc --noEmit` and `npm run build`
+      pass. vitest: **28 passed** (25 + 3 new contrast/token tests). Backend
+      pytest, unchanged: 700 passed
+- [x] Checked in a real browser (Chrome via Playwright) at 360, 768 and
+      1280 px, in EN and UR (RTL):
+      - no horizontal scroll on any route, no console errors
+      - the L4 takeover and the alerting hero were checked against a mocked
+        API in a scratch script only; nothing mocked ships
+      - `/predict` was run end to end
+- [x] First-load JS (production build, gzip computed locally from
+      `route-bundle-stats.json`): 169–178 KB per route (5a: 146–151 KB).
+      `/explain` fell from 262 to 169 KB because it no longer uses Recharts
+- [x] Lighthouse 12, mobile preset, local production build:
+      - accessibility: **100** on all 7 routes measured
+      - performance: `/admin` 90, `/predict` 87, `/subscribe` 86,
+        `/explain` 86, `/` 84, `/alerts` 84, `/map` 82 (runs vary by about
+        ±5)
+      - **`/`, `/alerts` and `/map` are below the 85 target.** Lighthouse's
+        simulated LCP (3.5–4.4 s) charges all script work to the first
+        paint. Measured directly in Chrome with 4× CPU and slow-4G
+        throttling, LCP is about 1.5–1.8 s. The home hero can only render
+        once the API returns the national level
+- [x] `docs/screenshots/`: home, map, alerts and subscribe at 360 px and
+      1280 px (`npm run screenshots`)
+
+**Observed, not fixed (backend, out of scope):** locally,
+`GET /flood/district/{d}` took over 60 s because it fetches external flood
+data. When the DL forecast is disabled (503), the map panel's fallback chart
+stays on its loading skeleton for that long.
 
 ## Phase 6 — Free deployment (Neon + Render + Vercel + cron-job.org)
 

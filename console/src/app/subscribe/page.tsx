@@ -1,9 +1,14 @@
 "use client";
 
-import { ExternalLink, Mail, Send } from "lucide-react";
+import { AnimatePresence, m } from "framer-motion";
+import { ExternalLink, Mail, MailCheck, Search, Send, X } from "lucide-react";
 import { useMemo, useState } from "react";
-import { LevelBadge } from "@/components/Level";
-import { ErrorNotice, Loading } from "@/components/Status";
+import { ChipGroup } from "@/components/Chips";
+import { LevelBadge, levelScope } from "@/components/Level";
+import { EASE_OUT } from "@/components/Motion";
+import { QrCode } from "@/components/QrCode";
+import { ErrorNotice, Notice, Skeleton } from "@/components/Status";
+import { Steps } from "@/components/Steps";
 import { useI18n } from "@/i18n/LanguageProvider";
 import { ApiError, api } from "@/lib/api";
 import type { EmailSubscribeResponse, TelegramLinkResponse } from "@/lib/types";
@@ -37,13 +42,23 @@ function TelegramCard({ districts }: { districts: string[] }) {
   };
 
   return (
-    <section className="card space-y-3" aria-labelledby="tg-title">
-      <h2 id="tg-title" className="h2 flex items-center gap-2">
-        <Send className="h-5 w-5" aria-hidden="true" />
-        {t("sub.telegram")}
-      </h2>
-      <p className="text-sm text-slate-700">{t("sub.telegramHelp")}</p>
-      <form onSubmit={getLink} className="flex flex-wrap items-end gap-2">
+    <section className="card lift flex flex-col gap-5" aria-labelledby="tg-title">
+      <div className="flex items-center gap-3">
+        <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-sky-400/15 text-sky-300 shadow-[0_0_20px_-4px_rgb(56_189_248/0.6)]">
+          <Send className="h-5 w-5" aria-hidden="true" />
+        </span>
+        <div>
+          <h2 id="tg-title" className="h2">
+            {t("sub.telegram")}
+          </h2>
+          <p className="text-sm text-muted">{t("sub.telegramHelp")}</p>
+        </div>
+      </div>
+
+      {/* Step 3 (pressing Start) happens inside Telegram: it is never marked done here. */}
+      <Steps label={t("sub.steps")} current={link ? 1 : 0} steps={[t("sub.tgStep1"), t("sub.tgStep2"), t("sub.tgStep3")]} />
+
+      <form onSubmit={getLink} className="flex flex-wrap items-end gap-3">
         <label className="min-w-48 flex-1">
           <span className="field-label">{t("common.district")}</span>
           <select className="field-input" value={district} onChange={(e) => setDistrict(e.target.value)} required>
@@ -61,27 +76,37 @@ function TelegramCard({ districts }: { districts: string[] }) {
       </form>
 
       <div aria-live="polite">
-        {error !== null &&
-          (isNotConfigured(error) ? (
-            <p className="rounded-md bg-slate-100 p-3 text-sm">{t("sub.telegramOff")}</p>
-          ) : (
-            <ErrorNotice error={error} />
-          ))}
-        {link && (
-          <div className="space-y-2 rounded-lg bg-sky-50 p-3">
-            <a href={link.url} target="_blank" rel="noopener noreferrer" className="btn-primary">
-              <ExternalLink className="h-4 w-4" aria-hidden="true" />
-              {t("sub.openTelegram")} — {link.district}
-            </a>
-            <p className="text-sm">{pick(link.instructions_en, link.instructions_ur)}</p>
-            <p className="text-sm">
-              {t("sub.orType", { bot: link.bot_username })}{" "}
-              <code className="rounded bg-white px-1.5 py-0.5" dir="ltr">
-                {link.start_command}
-              </code>
-            </p>
-          </div>
-        )}
+        {error !== null && (isNotConfigured(error) ? <Notice>{t("sub.telegramOff")}</Notice> : <ErrorNotice error={error} />)}
+        <AnimatePresence>
+          {link && (
+            <m.div
+              key={link.url}
+              initial={{ opacity: 0, y: 12, scale: 0.98 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              transition={{ duration: 0.35, ease: EASE_OUT }}
+              className="flex flex-col gap-5 rounded-2xl border border-sky-300/20 bg-sky-400/[0.06] p-5 sm:flex-row sm:items-center"
+            >
+              <div className="flex flex-col items-center gap-2">
+                <QrCode value={link.url} label={`${t("sub.openTelegram")} — ${link.district}`} />
+                <p className="max-w-44 text-center text-xs text-muted">{t("sub.scanQr")}</p>
+              </div>
+              <div className="min-w-0 flex-1 space-y-3">
+                <a href={link.url} target="_blank" rel="noopener noreferrer" className="btn-primary">
+                  <ExternalLink className="h-4 w-4" aria-hidden="true" />
+                  {t("sub.openTelegram")} — {link.district}
+                </a>
+                <p className="text-sm text-ink">{pick(link.instructions_en, link.instructions_ur)}</p>
+                <p className="text-sm text-muted">
+                  {t("sub.orType", { bot: link.bot_username })}{" "}
+                  <code className="num rounded-md bg-black/40 px-1.5 py-0.5 text-ink" dir="ltr">
+                    {link.start_command}
+                  </code>
+                </p>
+                <p className="text-xs text-muted">{pick(link.disclaimer, link.disclaimer_ur)}</p>
+              </div>
+            </m.div>
+          )}
+        </AnimatePresence>
       </div>
     </section>
   );
@@ -127,26 +152,48 @@ function EmailCard({ byProvince }: { byProvince: Record<string, string[]> }) {
     }
   };
 
+  // Double opt-in: the console can only see step 1 -> 2. Step 3 (clicking
+  // the link in the email) happens outside it, so it is never shown as done.
+  const steps = [t("sub.emailStep1"), t("sub.emailStep2"), t("sub.emailStep3")];
+
   if (result) {
     return (
-      <section className="card space-y-2 border-green-300 bg-green-50" aria-live="polite">
-        <h2 className="h2 flex items-center gap-2 text-green-950">
-          <Mail className="h-5 w-5" aria-hidden="true" />
-          {t("sub.sent")}
-        </h2>
-        <p className="text-green-950">{pick(result.message_en, result.message_ur)}</p>
-        <p className="text-sm text-green-900">{pick(result.disclaimer, result.disclaimer_ur)}</p>
+      <section className="card flex flex-col gap-5 border-emerald-300/25 bg-emerald-400/[0.05]" aria-live="polite" aria-labelledby="email-done">
+        <Steps label={t("sub.steps")} current={1} steps={steps} />
+        <m.div
+          className="flex items-center gap-4"
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ type: "spring", stiffness: 260, damping: 20 }}
+        >
+          <span className="grid h-14 w-14 shrink-0 place-items-center rounded-full bg-emerald-400/15 text-ok shadow-[0_0_28px_-4px_rgb(74_222_128/0.6)]">
+            <MailCheck className="h-7 w-7" aria-hidden="true" />
+          </span>
+          <h2 id="email-done" className="h2">
+            {t("sub.sent")}
+          </h2>
+        </m.div>
+        <p className="text-ink">{pick(result.message_en, result.message_ur)}</p>
+        <Notice tone="warn">{t("sub.confirmPending")}</Notice>
+        <p className="text-sm text-muted">{pick(result.disclaimer, result.disclaimer_ur)}</p>
       </section>
     );
   }
 
   return (
-    <section className="card space-y-3" aria-labelledby="email-title">
-      <h2 id="email-title" className="h2 flex items-center gap-2">
-        <Mail className="h-5 w-5" aria-hidden="true" />
-        {t("sub.email")}
-      </h2>
-      <form onSubmit={submit} className="space-y-4">
+    <section className="card lift flex flex-col gap-5" aria-labelledby="email-title">
+      <div className="flex items-center gap-3">
+        <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-accent/15 text-accent shadow-[0_0_20px_-4px_rgb(94_234_212/0.6)]">
+          <Mail className="h-5 w-5" aria-hidden="true" />
+        </span>
+        <h2 id="email-title" className="h2">
+          {t("sub.email")}
+        </h2>
+      </div>
+
+      <Steps label={t("sub.steps")} current={0} steps={steps} />
+
+      <form onSubmit={submit} className="space-y-5">
         <label className="block">
           <span className="field-label">{t("sub.emailLabel")}</span>
           <input
@@ -161,66 +208,105 @@ function EmailCard({ byProvince }: { byProvince: Record<string, string[]> }) {
           />
         </label>
 
-        <fieldset className="space-y-2">
+        <fieldset className="space-y-2.5">
           <legend className="field-label">
-            {t("sub.chooseDistricts")} — {t("sub.selectedCount", { n: selected.length })}
+            {t("sub.chooseDistricts")} — <span className="num">{t("sub.selectedCount", { n: selected.length })}</span>
           </legend>
-          <input
-            type="search"
-            className="field-input"
-            placeholder={t("sub.searchDistricts")}
-            aria-label={t("sub.searchDistricts")}
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
-          <div className="max-h-64 space-y-3 overflow-y-auto rounded-md border border-slate-200 p-2">
+          {selected.length > 0 && (
+            <ul className="flex flex-wrap gap-1.5">
+              <AnimatePresence initial={false}>
+                {selected.map((d) => (
+                  <m.li key={d} layout initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.8 }}>
+                    <button
+                      type="button"
+                      onClick={() => toggle(d)}
+                      className="inline-flex min-h-8 items-center gap-1 rounded-full border border-accent/50 bg-accent/15 px-2.5 text-xs font-medium text-white"
+                    >
+                      {d}
+                      <X className="h-3.5 w-3.5" aria-hidden="true" />
+                      <span className="sr-only">({t("common.close")})</span>
+                    </button>
+                  </m.li>
+                ))}
+              </AnimatePresence>
+            </ul>
+          )}
+          <div className="relative">
+            <Search className="pointer-events-none absolute start-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" aria-hidden="true" />
+            <input
+              type="search"
+              className="field-input ps-10"
+              placeholder={t("sub.searchDistricts")}
+              aria-label={t("sub.searchDistricts")}
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+          </div>
+          <div className="max-h-64 space-y-4 overflow-y-auto rounded-xl border border-line bg-black/20 p-3">
             {filtered.map(([province, list]) => (
               <div key={province}>
-                <p className="text-xs font-semibold uppercase text-slate-600">{province}</p>
+                <p className="eyebrow mb-1.5">{province}</p>
                 <div className="grid grid-cols-2 gap-1 sm:grid-cols-3">
-                  {list.map((d) => (
-                    <label key={d} className="flex items-center gap-2 rounded px-1 py-1 text-sm hover:bg-slate-50">
-                      <input type="checkbox" checked={selected.includes(d)} onChange={() => toggle(d)} className="h-4 w-4" />
-                      {d}
-                    </label>
-                  ))}
+                  {list.map((d) => {
+                    const on = selected.includes(d);
+                    return (
+                      <label
+                        key={d}
+                        className={`flex min-h-9 cursor-pointer items-center gap-2 rounded-lg px-2 py-1 text-sm transition-colors ${
+                          on ? "bg-accent/10 text-white" : "text-ink hover:bg-white/5"
+                        }`}
+                      >
+                        <input type="checkbox" checked={on} onChange={() => toggle(d)} className="h-4 w-4 shrink-0 accent-[#5eead4]" />
+                        {d}
+                      </label>
+                    );
+                  })}
                 </div>
               </div>
             ))}
           </div>
           {pickError && (
-            <p role="alert" className="text-sm font-medium text-red-800">
+            <p role="alert" className="text-sm font-medium text-danger">
               {t("sub.pickDistrict")}
             </p>
           )}
         </fieldset>
 
-        <fieldset>
+        <fieldset className="space-y-2">
           <legend className="field-label">{t("sub.minLevel")}</legend>
           {/* Level 1 is in-app only, so email starts at level 2 (schemas.py). */}
-          <div className="flex flex-wrap gap-3">
+          <p className="text-xs text-muted">{t("sub.minLevelHelp")}</p>
+          <div className="grid gap-2 sm:grid-cols-2">
             {[2, 3, 4, 5].map((n) => (
-              <label key={n} className="flex items-center gap-2">
-                <input type="radio" name="min-level" value={n} checked={minLevel === n} onChange={() => setMinLevel(n)} />
+              <label
+                key={n}
+                className={`${levelScope(n)} flex min-h-12 cursor-pointer items-center rounded-xl border p-2.5 transition-colors has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-accent ${
+                  minLevel === n ? "border-[color:var(--lvl-ink)] bg-white/[0.06] shadow-[0_0_20px_-6px_var(--lvl-glow)]" : "border-line hover:bg-white/[0.04]"
+                }`}
+              >
+                <input type="radio" name="min-level" value={n} checked={minLevel === n} onChange={() => setMinLevel(n)} className="sr-only" />
                 <LevelBadge level={n} size="sm" />
               </label>
             ))}
           </div>
         </fieldset>
 
-        <fieldset>
-          <legend className="field-label">{t("common.language")}</legend>
-          <div className="flex gap-4">
-            {(["en", "ur"] as const).map((code) => (
-              <label key={code} className="flex items-center gap-2">
-                <input type="radio" name="language" checked={language === code} onChange={() => setLanguage(code)} />
-                {code === "en" ? t("common.english") : t("common.urdu")}
-              </label>
-            ))}
-          </div>
-        </fieldset>
+        <div className="space-y-2">
+          <p className="field-label">{t("common.language")}</p>
+          <ChipGroup
+            id="email-lang"
+            label={t("common.language")}
+            value={language}
+            onChange={(v) => setLanguage(v as "en" | "ur")}
+            options={[
+              { value: "en", label: t("common.english") },
+              { value: "ur", label: t("common.urdu") },
+            ]}
+          />
+        </div>
 
-        <button type="submit" className="btn-primary" disabled={busy}>
+        <button type="submit" className="btn-primary w-full sm:w-auto" disabled={busy}>
+          <Mail className="h-4 w-4" aria-hidden="true" />
           {t("sub.subscribe")}
         </button>
       </form>
@@ -228,9 +314,9 @@ function EmailCard({ byProvince }: { byProvince: Record<string, string[]> }) {
       <div aria-live="polite">
         {error !== null &&
           (isNotConfigured(error) ? (
-            <p className="rounded-md bg-slate-100 p-3 text-sm">{t("sub.emailOff")}</p>
+            <Notice>{t("sub.emailOff")}</Notice>
           ) : error instanceof ApiError && error.status === 429 ? (
-            <p className="rounded-md bg-amber-50 p-3 text-sm">{t("sub.rateLimited")}</p>
+            <Notice tone="warn">{t("sub.rateLimited")}</Notice>
           ) : (
             <ErrorNotice error={error} />
           ))}
@@ -244,14 +330,17 @@ export default function SubscribePage() {
   const meta = useApi(api.meta);
 
   return (
-    <div className="space-y-5">
+    <div className="page space-y-6 py-8">
       <h1 className="h1">{t("sub.title")}</h1>
       {meta.error ? (
         <ErrorNotice error={meta.error} onRetry={meta.reload} />
       ) : !meta.data ? (
-        <Loading />
+        <div className="grid gap-6 lg:grid-cols-2">
+          <Skeleton className="h-80" />
+          <Skeleton className="h-80" />
+        </div>
       ) : (
-        <div className="grid gap-5 lg:grid-cols-2">
+        <div className="grid items-start gap-6 lg:grid-cols-2">
           <TelegramCard districts={meta.data.districts} />
           <EmailCard byProvince={meta.data.districts_by_province} />
         </div>

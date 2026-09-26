@@ -1,5 +1,6 @@
 "use client";
 
+import { X } from "lucide-react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useI18n } from "@/i18n/LanguageProvider";
@@ -8,14 +9,15 @@ import { OBSERVED_DAYS, forecastPoints, observedPointsFromDetail } from "@/lib/f
 import { formatDateTime, humanType } from "@/lib/format";
 import type { FloodDistrictDetail, FloodForecastResponse } from "@/lib/types";
 import { useApi } from "@/lib/useApi";
-import { LevelBadge } from "./Level";
+import { LevelBadge, levelScope } from "./Level";
 import { useLevels } from "./LevelsProvider";
-import { EmptyState, ErrorNotice, Loading } from "./Status";
+import { StaggerItem, StaggerList } from "./Motion";
+import { EmptyState, ErrorNotice, Notice, Skeleton } from "./Status";
 
 // recharts is the heaviest dependency; load it only once a district is opened.
 const FloodChart = dynamic(() => import("./FloodChart").then((m) => m.FloodChart), {
   ssr: false,
-  loading: () => <div className="h-56 w-full animate-pulse rounded bg-slate-100" />,
+  loading: () => <div className="skeleton h-60 w-full" aria-hidden="true" />,
 });
 
 type FloodResult =
@@ -40,7 +42,7 @@ async function loadFlood(district: string): Promise<FloodResult> {
   }
 }
 
-export function DistrictPanel({ district, level }: { district: string; level: number }) {
+export function DistrictPanel({ district, level, onClose }: { district: string; level: number; onClose?: () => void }) {
   const { t, pick, lang } = useI18n();
   const { levels } = useLevels();
   const flood = useApi(() => loadFlood(district), [district]);
@@ -48,59 +50,73 @@ export function DistrictPanel({ district, level }: { district: string; level: nu
   const meta = levels[level];
   const actions = meta ? (lang === "ur" ? meta.actions_ur : meta.actions_en) : [];
   const today = new Date().toISOString().slice(0, 10);
+  const chartLabels = {
+    observedLabel: `${t("map.observed")} (${OBSERVED_DAYS}d)`,
+    forecastPeriodLabel: t("map.forecastPeriod"),
+    baselineLabel: t("map.baseline"),
+    unit: t("map.unit"),
+  };
 
   return (
-    <div className="space-y-5">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 className="text-xl font-bold">{district}</h2>
-        <LevelBadge level={level} />
+    <div className="space-y-6">
+      <div className={`${levelScope(level)} rail -mx-5 -mt-5 flex items-start justify-between gap-3 border-b border-line bg-white/[0.03] px-5 pb-4 pt-5 ps-7`}>
+        <div className="min-w-0 space-y-2">
+          <h2 className="font-display text-2xl font-semibold text-white">{district}</h2>
+          <LevelBadge level={level} />
+        </div>
+        {onClose && (
+          <button type="button" onClick={onClose} className="btn-secondary h-10 w-10 shrink-0 !p-0" aria-label={t("common.close")}>
+            <X className="h-5 w-5" aria-hidden="true" />
+          </button>
+        )}
       </div>
 
       {actions.length > 0 && (
         <section>
-          <h3 className="mb-1 font-semibold">{t("map.actions")}</h3>
-          <ul className="list-disc space-y-1 ps-5 text-sm">
+          <h3 className="eyebrow mb-2">{t("map.actions")}</h3>
+          <ul className="space-y-2 text-sm text-ink">
             {actions.map((a) => (
-              <li key={a}>{a}</li>
+              <li key={a} className={`${levelScope(level)} flex gap-2.5`}>
+                <span className="dot mt-2 shrink-0" aria-hidden="true" />
+                <span>{a}</span>
+              </li>
             ))}
           </ul>
         </section>
       )}
 
-      <section className="space-y-2">
-        <h3 className="font-semibold">
+      <section className="space-y-3">
+        <h3 className="eyebrow">
           {t("map.discharge")} ({t("map.unit")})
         </h3>
         {flood.loading && !flood.data ? (
-          <Loading />
+          <Skeleton className="h-60" />
         ) : flood.error ? (
           <ErrorNotice error={flood.error} onRetry={flood.reload} />
         ) : flood.data?.kind === "forecast" ? (
           <>
             <FloodChart
               points={forecastPoints(flood.data.forecast)}
-              observedLabel={`${t("map.observed")} (${OBSERVED_DAYS}d)`}
               forecastLabel={`${t("map.forecast")} D+1..D+3`}
               baseline={flood.data.forecast.observed.baseline_median}
-              unit={t("map.unit")}
+              {...chartLabels}
             />
-            <p className="text-xs text-slate-600">{t("map.forecastNote", { version: flood.data.forecast.model_version })}</p>
-            <p className="text-xs text-slate-600">{flood.data.forecast.attribution}</p>
+            <p className="text-xs text-muted">{t("map.forecastNote", { version: flood.data.forecast.model_version })}</p>
+            <p className="text-xs text-muted">{flood.data.forecast.attribution}</p>
           </>
         ) : flood.data?.kind === "observed" ? (
           <>
-            <p className="rounded-md bg-slate-100 p-2 text-sm text-slate-800">
+            <Notice>
               {t("map.forecastUnavailable", { detail: flood.data.reason })} {t("map.observedOnly")}
-            </p>
+            </Notice>
             {flood.data.detailError ? (
               <ErrorNotice error={flood.data.detailError} onRetry={flood.reload} />
             ) : flood.data.detail && observedPointsFromDetail(flood.data.detail, today).length > 0 ? (
               <FloodChart
                 points={observedPointsFromDetail(flood.data.detail, today)}
-                observedLabel={`${t("map.observed")} (${OBSERVED_DAYS}d)`}
                 forecastLabel={t("map.forecast")}
                 baseline={flood.data.detail.discharge?.baseline_median}
-                unit={t("map.unit")}
+                {...chartLabels}
               />
             ) : (
               <EmptyState>{t("map.noDischarge")}</EmptyState>
@@ -109,30 +125,31 @@ export function DistrictPanel({ district, level }: { district: string; level: nu
         ) : null}
       </section>
 
-      <section className="space-y-2">
-        <h3 className="font-semibold">{t("map.latestAlerts")}</h3>
+      <section className="space-y-3">
+        <h3 className="eyebrow">{t("map.latestAlerts")}</h3>
         {latest.error ? (
           <ErrorNotice error={latest.error} onRetry={latest.reload} />
         ) : !latest.data ? (
-          <Loading />
+          <Skeleton className="h-14" lines={2} />
         ) : latest.data.alerts.length === 0 ? (
-          <EmptyState>{t("map.noAlerts")}</EmptyState>
+          <EmptyState illustration={false}>{t("map.noAlerts")}</EmptyState>
         ) : (
-          <ul className="space-y-2">
+          <StaggerList className="space-y-2">
             {latest.data.alerts.map((alert) => (
-              <li key={alert.id} className="rounded-lg border border-slate-200 p-2">
+              <StaggerItem key={alert.id} className={`${levelScope(alert.level)} rail rounded-xl border border-line bg-white/[0.03] p-3 ps-5`}>
                 <div className="flex flex-wrap items-center gap-2">
                   <LevelBadge level={alert.level} size="sm" />
-                  <span className="text-xs text-slate-600">
-                    {humanType(alert.type)} · {t(`status.${alert.status}` as "status.active")} · {formatDateTime(alert.created_at, lang)}
+                  <span className="text-xs text-muted">
+                    {humanType(alert.type)} · {t(`status.${alert.status}` as "status.active")} ·{" "}
+                    <span className="num">{formatDateTime(alert.created_at, lang)}</span>
                   </span>
                 </div>
-                <Link href={`/alerts/${alert.id}`} className="mt-1 block text-sm font-medium text-blue-800 underline">
+                <Link href={`/alerts/${alert.id}`} className="link mt-1.5 block text-sm font-medium">
                   {pick(alert.title_en, alert.title_ur)}
                 </Link>
-              </li>
+              </StaggerItem>
             ))}
-          </ul>
+          </StaggerList>
         )}
       </section>
     </div>
