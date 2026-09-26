@@ -3,13 +3,17 @@ import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { DISTRICT_NAME_UR } from "../districtNames";
 import {
+  BORDER_DOT,
   buildMarkers,
   CALM_DOT,
+  decayFling,
   filterDistricts,
   hexToRgb01,
   locationToAngles,
   MARKER_SIZE,
+  rimColor,
   shortestTurn,
+  SPIN_RAD_PER_S,
   type GlobePoint,
 } from "../globe";
 import { contrastRatio, LEVEL_TOKENS } from "../levels";
@@ -18,6 +22,7 @@ import { contrastRatio, LEVEL_TOKENS } from "../levels";
 // reads levels.py), so the console tables can never silently drift from it.
 const DISTRICTS_PY = resolve(__dirname, "../../../../backend/ml/districts.py");
 const POINTS_JSON = resolve(__dirname, "../../../public/geo/globe-points.json");
+const BORDER_JSON = resolve(__dirname, "../../../public/geo/globe-border.json");
 const CSS = resolve(__dirname, "../../app/globals.css");
 
 function backendDistricts(): string[] {
@@ -52,6 +57,32 @@ describe("district tables", () => {
   });
 });
 
+describe("globe border", () => {
+  const border: [number, number][] = JSON.parse(readFileSync(BORDER_JSON, "utf8"));
+
+  it("has a few hundred [lat, lon] dots, all around Pakistan", () => {
+    // Pakistan's land border + coast is ~7,300 km: about 65 degrees of arc,
+    // so ~200 dots at the 0.3 degree step in scripts/build-globe-border.mjs.
+    expect(border.length).toBeGreaterThan(150);
+    expect(border.length).toBeLessThan(400);
+    for (const [lat, lon] of border) {
+      expect(lat).toBeGreaterThan(23);
+      expect(lat).toBeLessThan(37.5);
+      expect(lon).toBeGreaterThan(60);
+      expect(lon).toBeLessThan(78);
+    }
+  });
+
+  it("reaches the country's far corners, so it is the whole outline", () => {
+    const lats = border.map(([lat]) => lat);
+    const lons = border.map(([, lon]) => lon);
+    expect(Math.min(...lats)).toBeLessThan(25); // Sindh coast
+    expect(Math.max(...lats)).toBeGreaterThan(36); // Gilgit-Baltistan
+    expect(Math.min(...lons)).toBeLessThan(62); // Balochistan-Iran border
+    expect(Math.max(...lons)).toBeGreaterThan(75); // Punjab/GB east
+  });
+});
+
 describe("globe view", () => {
   it("turns the short way round", () => {
     expect(shortestTurn(0, 0.5)).toBeCloseTo(0.5);
@@ -65,6 +96,32 @@ describe("globe view", () => {
     const [phiB] = locationToAngles(30, 70.5);
     expect(theta).toBeCloseTo((30 * Math.PI) / 180);
     expect(Math.abs(shortestTurn(phiA, phiB))).toBeCloseTo(Math.PI / 180);
+  });
+
+  it("spins at 0.002 rad a frame at 60 fps", () => {
+    expect(SPIN_RAD_PER_S / 60).toBeCloseTo(0.002, 6);
+  });
+
+  it("lets a fling die away within about a second, at any frame rate", () => {
+    expect(decayFling(4, 1)).toBeLessThan(0.1);
+    // Two 30 fps frames decay exactly as far as four 60 fps frames.
+    const at30 = decayFling(decayFling(4, 1 / 30), 1 / 30);
+    const at60 = [1, 2, 3, 4].reduce((v) => decayFling(v, 1 / 60), 4);
+    expect(at30).toBeCloseTo(at60, 9);
+  });
+
+  it("tints the rim with a dimmed copy of the level's colour", () => {
+    const ink = hexToRgb01(LEVEL_TOKENS[3].ink);
+    const rim = rimColor(3);
+    rim.forEach((c, i) => {
+      expect(c).toBeLessThan(ink[i] + 1e-9);
+      expect(c).toBeGreaterThanOrEqual(0);
+    });
+    expect(rimColor(3)).not.toEqual(rimColor(4));
+    // Calm is teal (more green/blue than red), not L1's near-white ink.
+    const [r, g, b] = rimColor(1);
+    expect(g).toBeGreaterThan(r);
+    expect(b).toBeGreaterThan(r);
   });
 
   it("converts hex colours to 0..1 channels", () => {
@@ -98,6 +155,30 @@ describe("globe markers", () => {
     expect(karachi.size).toBe(MARKER_SIZE[3]);
     expect(haloA.size).toBeGreaterThan(MARKER_SIZE[3]);
     expect(haloB.size).toBeGreaterThan(MARKER_SIZE[5]);
+  });
+
+  it("keeps every district a small dot with a tight halo, so 107 never fuse into one blob", () => {
+    for (const size of Object.values(MARKER_SIZE)) {
+      expect(size).toBeLessThanOrEqual(0.012);
+    }
+    // Alerting dots are at most ~1.8x a calm one: bigger, not a blob.
+    expect(MARKER_SIZE[5] / MARKER_SIZE[1]).toBeLessThanOrEqual(1.8);
+    const [halo] = buildMarkers(points, { Karachi: 5 }, 1);
+    expect(halo.size).toBeLessThan(2 * MARKER_SIZE[5]);
+  });
+
+  it("draws the border outline first, under everything, smaller than any district", () => {
+    const border: [number, number][] = [
+      [24, 67],
+      [25, 62],
+    ];
+    const markers = buildMarkers(points, { Karachi: 3 }, 0, border);
+    expect(markers).toHaveLength(2 + 1 + 3);
+    expect(markers.slice(0, 2).map((m) => m.location)).toEqual(border);
+    for (const m of markers.slice(0, 2)) {
+      expect(m.color).toEqual(BORDER_DOT);
+      expect(m.size).toBeLessThan(MARKER_SIZE[1]);
+    }
   });
 
   it("grows the marker with every level, so size alone ranks them", () => {

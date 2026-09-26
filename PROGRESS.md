@@ -923,6 +923,63 @@ effects through the `prefers-reduced-motion` block in `globals.css`.
       **43 passed** (was 28). Backend pytest, unchanged: **700 passed**
 - [ ] Not redone: `docs/screenshots/` and Lighthouse (the home hero changed)
 
+### Phase 5c addendum — hero globe sizing + premium polish — **DONE**
+
+Supersedes the sizes, sway and marker styling above.
+- [x] Sizing: the globe's size is set by one CSS variable, `--globe`, in
+      globals.css.
+      - from 1024 px: text on the left, globe on the right, vertically
+        centred. The globe is `clamp(400px, 60vh, 500px)` and nudged 6 %
+        past the column's outer edge (clipped by the band, so there's no
+        sideways scroll)
+      - below 1024 px: 360 px on tablets and 260 px on phones, under the
+        text. Still hidden under 360 px
+      - measured hero height: 600 px, which is 67vh at 1440×900. At
+        1280×720 it is 83vh, because the existing 600 px min-height (kept
+        to avoid layout shift) wins over the 78vh target
+- [x] Markers:
+      - each of the 107 districts is its own dot
+      - the requested 0.025–0.035 sizes fused Pakistan into one solid blob
+        in cobe v2's units, so sizes are 0.0065 (calm) to 0.0115 (L5)
+      - calm dots are soft teal-white at 35 % strength (cobe markers have no
+        alpha, so the colour is scaled down instead)
+      - alerting dots are in their level colour over a tight halo (under 2×
+        the dot's size)
+- [x] Faint dotted national border: 219 dots in
+      `public/geo/globe-border.json`, built by
+      `scripts/build-globe-border.mjs`
+      - method: keep the district-polygon edges that belong to only one
+        district, then sample every 0.3°
+      - the source GeoJSON has no AJK polygons, so the outline has a small
+        inner loop there
+- [x] Finish:
+      - `dark` 0.85, `diffuse` 1.2 and dimmer land dots
+      - an atmosphere rim in the national level's colour (teal when calm)
+        from cobe's glow plus a CSS ring
+      - a stronger dark radial vignette behind the globe
+      - thinner and fainter HUD lines and dots
+- [x] Motion:
+      - starts on Pakistan and spins continuously at 0.12 rad/s (0.002 rad
+        per frame at 60 fps, frame-rate independent). This replaces the
+        ±26° sway
+      - mouse/pen drag with inertia. Touch still scrolls the page
+      - picking a district still turns the globe to it
+      - pauses when off-screen or when the tab is hidden
+- [x] Fix: under reduced motion the single still frame was drawn before
+      cobe's land texture loaded, so the land was missing. It is now
+      redrawn at 150, 500 and 1200 ms
+- [x] Glass pill:
+      - over the globe's lower third (`-0.36 × globe`)
+      - 400 px max on phones and tablets, 84 % of the globe on desktop
+      - the district card sits under the pill, at the same width
+- [x] Checked in headless Chrome (scratch script, not shipped) at 340, 390,
+      800, 1280×720 and 1440×900
+      - no horizontal scroll and no page errors
+      - alert colours checked by rewriting `/alerts/active` in the browser
+        only
+- [x] Quality gates: lint, tsc and build pass. vitest: **50 passed**. Backend pytest, unchanged: **700 passed**
+- [ ] Not redone: `docs/screenshots/` and Lighthouse
+
 ## Phase 6 — Free deployment (Neon + Render + Vercel + cron-job.org)
 
 - [ ] PostgreSQL on Neon (free tier)

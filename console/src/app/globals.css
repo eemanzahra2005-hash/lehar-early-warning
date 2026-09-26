@@ -549,8 +549,8 @@ html[lang="en"] .urdu {
 
 /* HUD frame: thin 1 px lines running edge to edge along the content column
    and above the waves, with a small level-coloured dot where they cross. */
-.hero-hud { --hud-line: rgb(255 255 255 / 0.1); --hud-dot: var(--lvl-ink); position: absolute; inset: 0; z-index: -1; pointer-events: none; }
-.lvl-scope-2 .hero-hud { --hud-line: rgb(17 24 39 / 0.2); --hud-dot: #111827; }
+.hero-hud { --hud-line: rgb(255 255 255 / 0.07); --hud-dot: var(--lvl-ink); position: absolute; inset: 0; z-index: -1; pointer-events: none; }
+.lvl-scope-2 .hero-hud { --hud-line: rgb(17 24 39 / 0.14); --hud-dot: #111827; }
 .hero-hud { --hud-x: max(12px, calc(50% - 600px + 12px)); --hud-top: 14px; --hud-bottom: clamp(36px, 6vw, 58px); }
 .hud-h, .hud-v { position: absolute; background: var(--hud-line); }
 .hud-h { inset-inline: 0; height: 1px; }
@@ -561,29 +561,55 @@ html[lang="en"] .urdu {
 .hud-v.end { right: var(--hud-x); }
 .hud-dot {
   position: absolute;
-  width: 5px;
-  height: 5px;
-  margin: -2px;
+  width: 4px;
+  height: 4px;
+  margin: -1.5px;
   border-radius: 9999px;
   background: var(--hud-dot);
-  box-shadow: 0 0 8px 1px var(--lvl-glow);
+  opacity: 0.8;
+  box-shadow: 0 0 6px var(--lvl-glow);
 }
 .hud-dot.tl { top: var(--hud-top); left: var(--hud-x); }
 .hud-dot.tr { top: var(--hud-top); right: var(--hud-x); }
 .hud-dot.bl { bottom: var(--hud-bottom); left: var(--hud-x); }
 .hud-dot.br { bottom: var(--hud-bottom); right: var(--hud-x); }
 
-/* The globe sits in a pool of shadow, like a lit object on a dark stage. */
-.hero-globe-stage::before {
+/* Globe size per screen: 260 px on phones, 360 px on tablets (both under
+   the text), and beside the text from 1024 px, capped by the viewport height
+   so the whole hero stays within ~78vh on a laptop. */
+.hero-globe { --globe: 260px; }
+@media (min-width: 640px) { .hero-globe { --globe: 360px; } }
+@media (min-width: 1024px) {
+  .hero-globe { --globe: clamp(400px, 60vh, 500px); }
+  /* Nudge the globe past the column's outer edge for depth; the band's
+     overflow: hidden clips it, so the page never scrolls sideways. */
+  .hero-globe { transform: translateX(6%); }
+  [dir="rtl"] .hero-globe { transform: translateX(-6%); }
+}
+.hero-globe-stage { width: min(var(--globe), 100%); isolation: isolate; }
+
+/* The globe sits in a pool of shadow, like a lit object on a dark stage,
+   with a thin atmosphere rim in the national level's glow colour. cobe
+   draws the sphere at 80 % of the canvas radius, hence the rim stops. */
+.hero-globe-stage::before,
+.hero-globe-stage::after {
   content: "";
   position: absolute;
-  inset: -8%;
   z-index: -1;
   border-radius: 9999px;
-  background: radial-gradient(closest-side, rgb(3 6 12 / 0.55), rgb(3 6 12 / 0.25) 65%, transparent);
   pointer-events: none;
 }
-.hero-globe-canvas { display: block; contain: layout paint size; }
+.hero-globe-stage::before {
+  inset: -14%;
+  background: radial-gradient(closest-side, rgb(3 6 12 / 0.7), rgb(3 6 12 / 0.4) 55%, rgb(3 6 12 / 0.12) 80%, transparent);
+}
+.hero-globe-stage::after {
+  inset: 0;
+  background: radial-gradient(closest-side, transparent 74%, var(--lvl-glow) 81%, transparent 93%);
+  opacity: 0.55;
+}
+.hero-globe-canvas { display: block; contain: layout paint size; cursor: grab; touch-action: pan-y; }
+.hero-globe-canvas[data-dragging] { cursor: grabbing; }
 
 /* HUD caption, pill, list and card are all dark glass with their own light
    text, so they stay AA on every level's band (7:1+ even over L2 yellow). */
@@ -633,9 +659,14 @@ html[lang="ur"] .hero-hud-caption { letter-spacing: 0; }
 }
 .hero-pill-btn:hover { background: rgb(255 255 255 / 0.16); }
 .hero-pill-btn:disabled { opacity: 0.5; }
-/* Overlap the globe's lower half, as a percentage of the column's width
-   (the stage is square, so this tracks the globe at every size). */
-.hero-pill-overlap { margin-top: -22%; }
+/* The pill (and the district card under it) is wider than the small
+   phone/tablet globes so the placeholder fits, and a little narrower than
+   the big desktop globe so the sphere frames it. */
+.hero-pill-wrap { width: min(100%, 400px); }
+@media (min-width: 1024px) { .hero-pill-wrap { width: min(100%, calc(var(--globe) * 0.84)); } }
+/* Sit over the globe's lower third: the stage is square, so its height is
+   its width, min(var(--globe), 100%). */
+.hero-pill-overlap { margin-top: calc(min(var(--globe), 100%) * -0.36); }
 .hero-listbox, .hero-card {
   background: rgb(14 21 36 / 0.96);
   border: 1px solid rgb(255 255 255 / 0.14);

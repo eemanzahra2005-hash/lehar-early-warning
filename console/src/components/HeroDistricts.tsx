@@ -275,13 +275,23 @@ function DistrictCard({ district, level, onClose }: { district: string; level: n
 
 /**
  * The hero's right-hand column: the dotted globe (or the SVG mini-map when
- * WebGL is unavailable), the glass district pill overlapping its lower edge,
- * and the chosen district's card. Under 360 px wide the globe is hidden and
- * only the pill remains (globals.css).
+ * WebGL is unavailable), the glass district pill over its lower third, and
+ * the chosen district's card. The globe's size per screen width lives in
+ * globals.css (--globe): 260 px on phones, 360 px on tablets, up to 500 px
+ * beside the text on desktops; under 360 px wide it is hidden and only the
+ * pill remains.
  */
-export function HeroGlobePanel({ levelByDistrict }: { levelByDistrict: Record<string, number> | null }) {
+export function HeroGlobePanel({
+  levelByDistrict,
+  level,
+}: {
+  levelByDistrict: Record<string, number> | null;
+  /** National (highest) level, for the globe's rim colour. */
+  level: number;
+}) {
   const { t } = useI18n();
   const [points, setPoints] = useState<GlobePoint[]>([]);
+  const [border, setBorder] = useState<[number, number][]>([]);
   const [noWebgl, setNoWebgl] = useState(false);
   const [selected, setSelected] = useState<string | null>(null);
   const levels = useMemo(() => levelByDistrict ?? {}, [levelByDistrict]);
@@ -289,25 +299,29 @@ export function HeroGlobePanel({ levelByDistrict }: { levelByDistrict: Record<st
   const focus = useMemo(() => points.find((p) => p.n === selected) ?? null, [points, selected]);
 
   useEffect(() => {
-    // 5 KB of centroids built by scripts/build-globe-points.mjs.
+    // 5 KB of centroids (scripts/build-globe-points.mjs) and 3 KB of border
+    // dots (scripts/build-globe-border.mjs).
     let cancelled = false;
-    fetch("/geo/globe-points.json")
-      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
-      .then((json: GlobePoint[]) => !cancelled && setPoints(json))
-      // No points: the globe still turns, just without markers; the pill works regardless.
-      .catch(() => {});
+    const load = <T,>(url: string, set: (json: T) => void) =>
+      fetch(url)
+        .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
+        .then((json: T) => !cancelled && set(json))
+        // Missing: the globe still turns, just without those dots; the pill works regardless.
+        .catch(() => {});
+    load("/geo/globe-points.json", setPoints);
+    load("/geo/globe-border.json", setBorder);
     return () => {
       cancelled = true;
     };
   }, []);
 
   return (
-    <div className="hero-globe mx-auto w-full max-w-[300px] sm:max-w-[380px] lg:max-w-[460px]">
+    <div className="hero-globe mx-auto w-full">
       <p className="hero-hud-caption num mb-2 flex items-center justify-center gap-2 text-xs uppercase">
         <span className="live-dot" aria-hidden="true" />
         {t("hero.hudCaption", { n: districts.length || 107 })}
       </p>
-      <div className="hero-globe-stage relative">
+      <div className="hero-globe-stage relative mx-auto">
         {noWebgl ? (
           levelByDistrict ? (
             <div className="hero-card p-3">
@@ -319,19 +333,21 @@ export function HeroGlobePanel({ levelByDistrict }: { levelByDistrict: Record<st
         ) : (
           <HeroGlobe
             points={points}
+            border={border}
             levelByDistrict={levels}
+            level={level}
             focus={focus}
             label={t("hero.globeLabel")}
             onUnavailable={() => setNoWebgl(true)}
           />
         )}
       </div>
-      <div className={`relative z-10 mx-auto w-[92%] ${noWebgl ? "mt-3" : "hero-pill-overlap"}`}>
+      <div className={`hero-pill-wrap relative z-10 mx-auto ${noWebgl ? "mt-3" : "hero-pill-overlap"}`}>
         <DistrictCombobox districts={districts} levelByDistrict={levels} selected={selected} onSelect={setSelected} />
+        <AnimatePresence mode="wait">
+          {selected && <DistrictCard key={selected} district={selected} level={levels[selected]} onClose={() => setSelected(null)} />}
+        </AnimatePresence>
       </div>
-      <AnimatePresence mode="wait">
-        {selected && <DistrictCard key={selected} district={selected} level={levels[selected]} onClose={() => setSelected(null)} />}
-      </AnimatePresence>
     </div>
   );
 }

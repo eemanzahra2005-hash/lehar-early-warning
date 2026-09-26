@@ -33,8 +33,9 @@ const ALL_CLEAR_WINDOW_MS = 48 * 3600 * 1000;
 // The hero and its loading skeleton share a minimum height, so the page
 // below does not jump when the national level arrives (layout shift). The
 // extra bottom padding is room for the wave edge. Below lg the globe stacks
-// under the text; from lg it sits beside it. Under 360 px the globe hides.
-const HERO_MIN_H = "min-h-[700px] min-[360px]:min-h-[880px] sm:min-h-[900px] md:min-h-[830px] lg:min-h-[620px]";
+// under the text; from lg it sits beside it, vertically centred. Under
+// 360 px the globe hides. Globe sizes: globals.css (--globe).
+const HERO_MIN_H = "min-h-[700px] min-[360px]:min-h-[840px] sm:min-h-[880px] md:min-h-[810px] lg:min-h-[600px]";
 
 // Load choreography: the numeral springs in first, then the text lines fade
 // up one after another, 60 ms apart. Only on first appearance; a poll that
@@ -162,7 +163,7 @@ function Hero({
         {announcement}
       </p>
       <m.div
-        className="page grid items-start gap-y-8 pb-16 pt-10 sm:pb-20 sm:pt-14 lg:grid-cols-[minmax(0,1fr)_minmax(0,460px)] lg:gap-x-10 lg:pb-24 lg:pt-16"
+        className="page grid items-start gap-y-8 pb-16 pt-10 sm:pb-20 sm:pt-14 lg:grid-cols-[minmax(0,1fr)_minmax(0,520px)] lg:items-center lg:gap-x-10 lg:pb-20 lg:pt-12"
         variants={heroLines}
         initial="hidden"
         animate="show"
@@ -212,7 +213,7 @@ function Hero({
           </m.p>
         </div>
         <m.div variants={heroLine}>
-          <HeroGlobePanel levelByDistrict={levelByDistrict} />
+          <HeroGlobePanel levelByDistrict={levelByDistrict} level={level} />
         </m.div>
       </m.div>
       <HeroWaves />
