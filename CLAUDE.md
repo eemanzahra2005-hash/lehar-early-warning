@@ -19,8 +19,8 @@ a separate console, and a zero-cost split cloud deployment.
 - Backend: Python FastAPI
 - ML: scikit-learn (RandomForest to start)
 - Database: SQLite locally, PostgreSQL (Neon) in the deployed stack
-- Frontend: vanilla HTML/CSS/JS (no React, no build step) in this repo; the
-  separate Next.js Early-Warning Console lives in its own repository
+- Frontend: vanilla HTML/CSS/JS (no React, no build step) in `frontend/`; the
+  Next.js Early-Warning Console lives in this repo under `console/`
 - Containerization: Docker / docker compose
 - Alerts: rule-based, deterministic, auditable — never LLM-generated
 
@@ -64,8 +64,9 @@ a separate console, and a zero-cost split cloud deployment.
 7. **Frontend stays vanilla HTML/CSS/JS.** No React, Vue, or any framework
    requiring a build step. Any third-party JS/CSS libraries must be vendored
    locally into `frontend/vendor/` — no CDN dependency, so the app works fully
-   offline. This rule governs everything in `frontend/`; the separate Next.js
-   console (its own repository, LEHAR Phase 5) is explicitly out of its scope.
+   offline. This rule governs everything in `frontend/`; the Next.js
+   Early-Warning Console in `console/` (LEHAR Phase 5, deployed on Vercel with
+   Root Directory = `console`) is explicitly out of its scope.
 
 8. **Pin exact dependency versions.** `backend/requirements.txt` and
    `backend/requirements-dev.txt` must pin exact versions (`==`), compatible
@@ -131,6 +132,7 @@ LEHAR/
 │   ├── ml/                  # districts, generate_data, pipeline, model/<version>/
 │   └── tests/
 ├── frontend/                # vanilla HTML/CSS/JS + vendor/ (no CDN)
+├── console/                 # Next.js Early-Warning Console (Vercel Root Directory)
 ├── docs/                    # feature, deployment and MLOps documentation
 ├── monitoring/              # Prometheus + provisioned Grafana
 ├── scripts/

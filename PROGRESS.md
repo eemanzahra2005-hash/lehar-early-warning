@@ -653,15 +653,15 @@ and Neon were not configured from the development machine. The schedule is
 documented and the exact request is tested against a mock and in-process.
 The first real scheduled run is a Phase 6 check.
 
-## Phase 5 — Next.js Early-Warning Console (separate repo)
+## Phase 5 — Next.js Early-Warning Console (in this repo, `console/`)
 
-> **Location changed in Phase 5a:** by request, the console was built in
-> `console/` **inside this repository** (Vercel Root Directory = `console`),
-> not in a separate repository. CLAUDE.md rule 7 still covers only
+> The console lives in this repository under `console/` and Vercel deploys it
+> with Root Directory = `console`. It was first planned as a separate
+> repository; Phase 5a moved it in-repo. CLAUDE.md rule 7 covers only
 > `frontend/`.
 
-- [~] New Next.js console talking to this API. Scaffold + pages done in 5a
-      (in this repo, see above)
+- [~] New Next.js console in `console/` talking to this API. Scaffold +
+      pages done in 5a
 - [x] Flood views carry the research-advisory disclaimer (CLAUDE.md rule 12).
       Every console page shows it in the footer in EN + UR
 - [x] This repo's vanilla-JS frontend stays as-is (`frontend/` untouched in 5a)
