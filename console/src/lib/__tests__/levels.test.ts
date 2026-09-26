@@ -62,6 +62,34 @@ describe("level tokens", () => {
     }
   });
 
+  it("keep hero band text AA under the drifting blobs and the light sweep", () => {
+    // Worst case: a blob at full strength, then the sweep at its peak on top.
+    const over = (base: string, [top, alpha]: [string, number]) => {
+      const rgb = (hex: string) => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
+      const [b, t] = [rgb(base), rgb(top)];
+      return "#" + b.map((v, i) => Math.round(v + (t[i] - v) * alpha).toString(16).padStart(2, "0")).join("");
+    };
+    for (const token of Object.values(LEVEL_TOKENS)) {
+      for (const stop of [...token.band, ...token.blob]) {
+        expect(contrastRatio(token.bandFg, stop), `${token.key} blob ${stop}`).toBeGreaterThanOrEqual(4.5);
+        const swept = over(stop, token.sweep);
+        expect(contrastRatio(token.bandFg, swept), `${token.key} sweep over ${stop}`).toBeGreaterThanOrEqual(4.5);
+      }
+    }
+  });
+
+  it("mirror the hero motion tokens in globals.css", () => {
+    const css = readFileSync(CSS, "utf8").toLowerCase();
+    for (const token of Object.values(LEVEL_TOKENS)) {
+      const name = token.key === "OPS" ? "ops" : String(token.number);
+      expect(css).toContain(`--lvl-${name}-blob-a: ${token.blob[0].toLowerCase()};`);
+      expect(css).toContain(`--lvl-${name}-blob-b: ${token.blob[1].toLowerCase()};`);
+      const [hex, alpha] = token.sweep;
+      const rgb = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16)).join(" ");
+      expect(css).toContain(`--lvl-${name}-sweep: rgb(${rgb} / ${alpha});`);
+    }
+  });
+
   it("mirror the dark-theme tokens in globals.css", () => {
     const css = readFileSync(CSS, "utf8").toLowerCase();
     for (const token of Object.values(LEVEL_TOKENS)) {

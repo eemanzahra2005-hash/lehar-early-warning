@@ -5,10 +5,10 @@ import { ArrowUpRight, CircleCheck, MapPin } from "lucide-react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { LevelBackdrop, PulsingIcon } from "@/components/LevelBand";
+import { HeroWaves, LevelBackdrop, PulsingIcon } from "@/components/LevelBand";
 import { LevelBadge, LevelIcon, levelScope, useLevelLabel } from "@/components/Level";
 import { useLevels } from "@/components/LevelsProvider";
-import { CountUp, EASE_OUT, FadeIn, Reveal, SPRING, StaggerItem, StaggerList } from "@/components/Motion";
+import { CountUp, EASE_OUT, FadeIn, Reveal, SPRING, StaggerItem, StaggerList, usePrefersReducedMotion } from "@/components/Motion";
 import { EmptyState, ErrorNotice, Skeleton } from "@/components/Status";
 import { Takeover, readLocalAcks } from "@/components/Takeover";
 import { useI18n } from "@/i18n/LanguageProvider";
@@ -30,8 +30,100 @@ const MiniMap = dynamic(() => import("@/components/MiniMap").then((mod) => mod.M
 const REFRESH_MS = 60_000;
 const ALL_CLEAR_WINDOW_MS = 48 * 3600 * 1000;
 // The hero and its loading skeleton share a minimum height, so the page
-// below does not jump when the national level arrives (layout shift).
-const HERO_MIN_H = "min-h-[470px] sm:min-h-[480px] md:min-h-[400px] lg:min-h-[432px]";
+// below does not jump when the national level arrives (layout shift). The
+// extra bottom padding is room for the wave edge.
+const HERO_MIN_H = "min-h-[486px] sm:min-h-[496px] md:min-h-[416px] lg:min-h-[448px]";
+
+// Load choreography: the numeral springs in first, then the text lines fade
+// up one after another, 60 ms apart. Only on first appearance; a poll that
+// returns the same data changes nothing.
+const heroLines = {
+  hidden: {},
+  show: { transition: { delayChildren: 0.15, staggerChildren: 0.06 } },
+};
+const heroLine = {
+  hidden: { opacity: 0, y: 12 },
+  show: { opacity: 1, y: 0, transition: { duration: 0.45, ease: EASE_OUT } },
+};
+
+/**
+ * The digits of the big numeral: a blurred copy that slowly "breathes" under
+ * the solid digits. When `countUp` is set (first load only) both count from
+ * 0 up to the level, written straight into the DOM so it costs no renders.
+ */
+function NumeralDigits({ value, countUp }: { value: number; countUp: boolean }) {
+  const glow = useRef<HTMLSpanElement>(null);
+  const solid = useRef<HTMLSpanElement>(null);
+  const reduce = usePrefersReducedMotion();
+
+  useEffect(() => {
+    if (!countUp || reduce || value <= 0) return;
+    const write = (n: number) => {
+      if (glow.current) glow.current.textContent = String(n);
+      if (solid.current) solid.current.textContent = String(n);
+    };
+    // 700 ms ease-out, stepping through whole numbers only (0, 1, 2, 3 ...).
+    const began = performance.now();
+    let frame = requestAnimationFrame(function tick(now) {
+      const t = Math.min(1, (now - began) / 700);
+      write(Math.round(value * (1 - (1 - t) ** 3)));
+      if (t < 1) frame = requestAnimationFrame(tick);
+    });
+    return () => {
+      cancelAnimationFrame(frame);
+      write(value);
+    };
+  }, [countUp, reduce, value]);
+
+  return (
+    <span className="hero-digit">
+      <span ref={glow} className="hero-digit-glow">
+        {value}
+      </span>
+      <span ref={solid} className="hero-digit-solid">
+        {value}
+      </span>
+    </span>
+  );
+}
+
+/**
+ * The big level numeral. First appearance: springs in from 80 % and counts
+ * up. Later level changes (a poll or refresh): the old digit rolls up and
+ * out while the new one rolls in from below.
+ */
+function HeroNumeral({ level }: { level: number }) {
+  // "Has the level changed since this hero appeared?", tracked with the
+  // render-time state update React recommends over an effect.
+  const [shown, setShown] = useState(level);
+  const [changed, setChanged] = useState(false);
+  if (shown !== level) {
+    setShown(level);
+    setChanged(true);
+  }
+
+  return (
+    <m.span
+      className="hero-numeral hero-roll"
+      aria-hidden="true"
+      initial={{ opacity: 0, scale: 0.8 }}
+      animate={{ opacity: 1, scale: 1 }}
+      transition={{ type: "spring", stiffness: 260, damping: 18 }}
+    >
+      <AnimatePresence initial={false}>
+        <m.span
+          key={level}
+          initial={{ y: "70%", opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          exit={{ y: "-70%", opacity: 0 }}
+          transition={{ duration: 0.45, ease: EASE_OUT }}
+        >
+          <NumeralDigits value={level} countUp={!changed} />
+        </m.span>
+      </AnimatePresence>
+    </m.span>
+  );
+}
 
 function Hero({ summary }: { summary: AlertHealthSummaryResponse }) {
   const { t, lang } = useI18n();
@@ -44,68 +136,78 @@ function Hero({ summary }: { summary: AlertHealthSummaryResponse }) {
   const otherName = lang === "ur" ? summary.highest_level_name_en : summary.highest_level_name_ur;
   const urgent = level >= 4;
 
+  // Screen readers hear a level CHANGE, once, not every poll's new
+  // "updated" time. Empty on first load: the heading is read in page order.
+  const [announcedFor, setAnnouncedFor] = useState(level);
+  const [announcement, setAnnouncement] = useState("");
+  if (announcedFor !== level) {
+    setAnnouncedFor(level);
+    setAnnouncement(t("board.levelChanged", { level: label }));
+  }
+
   return (
-    <section
-      aria-labelledby="banner-title"
-      aria-live={urgent ? "assertive" : "polite"}
-      className={`band ${levelScope(level)} ${HERO_MIN_H} border-b border-white/10`}
-    >
-      <LevelBackdrop level={level} />
-      <div className="page py-10 sm:py-14 lg:py-16">
+    <section aria-labelledby="banner-title" className={`band ${levelScope(level)} ${HERO_MIN_H}`}>
+      <LevelBackdrop level={level} hero />
+      <p className="sr-only" aria-live={urgent ? "assertive" : "polite"} aria-atomic="true">
+        {announcement}
+      </p>
+      <m.div
+        className="page pb-14 pt-10 sm:pb-[4.5rem] sm:pt-14 lg:pb-20 lg:pt-16"
+        variants={heroLines}
+        initial="hidden"
+        animate="show"
+      >
         <p className="text-sm font-semibold uppercase tracking-[0.14em] rtl:tracking-normal">{t("board.nationalHighest")}</p>
         <div className="mt-4 flex flex-wrap items-end gap-x-8 gap-y-4">
           <div className="flex items-center gap-5">
-            <m.span
-              key={level}
-              className="hero-numeral"
-              aria-hidden="true"
-              initial={{ opacity: 0, y: 16, scale: 0.96 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              transition={{ duration: 0.5, ease: EASE_OUT }}
-            >
-              {level}
-            </m.span>
-            <PulsingIcon level={level} className="h-12 w-12 sm:h-16 sm:w-16" ringClass="p-3 sm:p-4" />
+            <HeroNumeral level={level} />
+            <PulsingIcon level={level} radar className="h-12 w-12 sm:h-16 sm:w-16" ringClass="p-3 sm:p-4" />
           </div>
           <div className="min-w-0 pb-2">
-            <h1 id="banner-title" className="text-3xl font-semibold sm:text-4xl lg:text-5xl">
+            <m.h1 id="banner-title" variants={heroLine} className="text-3xl font-semibold sm:text-4xl lg:text-5xl">
               {label}
-            </h1>
+            </m.h1>
             {otherName && (
-              <p lang={lang === "ur" ? "en" : "ur"} dir={lang === "ur" ? "ltr" : "rtl"} className={`mt-1 text-lg font-medium sm:text-xl ${lang === "ur" ? "" : "urdu"}`}>
+              <m.p
+                variants={heroLine}
+                lang={lang === "ur" ? "en" : "ur"}
+                dir={lang === "ur" ? "ltr" : "rtl"}
+                className={`mt-1 text-lg font-medium sm:text-xl ${lang === "ur" ? "" : "urdu"}`}
+              >
                 {otherName}
-              </p>
+              </m.p>
             )}
           </div>
         </div>
 
-        <p className="mt-6 max-w-3xl text-lg font-medium sm:text-xl">
+        <m.p variants={heroLine} className="mt-6 max-w-3xl text-lg font-medium sm:text-xl">
           {level <= 1 && <CircleCheck className="me-2 inline h-6 w-6 -translate-y-0.5 text-emerald-300" aria-hidden="true" />}
           {summary.alerting_districts === 0
             ? t("board.allCalm", { total: summary.total_districts })
             : t("board.alertingDistricts", { n: summary.alerting_districts, total: summary.total_districts })}
-        </p>
+        </m.p>
         {firstAction && (
-          <p className="mt-2 max-w-3xl text-base font-semibold sm:text-lg">
+          <m.p variants={heroLine} className="mt-2 max-w-3xl text-base font-semibold sm:text-lg">
             {t("board.whatToDo")}: {firstAction}
-          </p>
+          </m.p>
         )}
-        <p className="mt-6 flex flex-wrap items-center gap-x-2 text-sm font-medium">
+        <m.p variants={heroLine} className="hero-live mt-6 flex flex-wrap items-center gap-x-2 text-sm font-medium">
           <span className="num">{t("common.updated", { time: formatDateTime(summary.generated_at, lang) })}</span>
           <span aria-hidden="true">·</span>
           <span className="inline-flex items-center gap-2">
             <span className="live-dot" aria-hidden="true" />
             {t("board.live")}
           </span>
-        </p>
-      </div>
+        </m.p>
+      </m.div>
+      <HeroWaves />
     </section>
   );
 }
 
 function HeroSkeleton() {
   return (
-    <div className={`${HERO_MIN_H} border-b border-white/10 bg-white/[0.02]`}>
+    <div className={`${HERO_MIN_H} bg-white/[0.02]`}>
       <div className="page space-y-4 py-12">
         <Skeleton className="h-4 w-56" />
         <div className="skeleton h-32 w-72 max-w-full" aria-hidden="true" />

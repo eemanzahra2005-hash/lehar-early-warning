@@ -35,34 +35,49 @@ export interface LevelToken {
   ink: string;
   band: [string, string];
   bandFg: string;
+  /**
+   * Home hero motion (Phase 5c). `blob` are the two colours of the drifting
+   * mesh blobs, and `sweep` is the colour + peak opacity of the light sweep.
+   * Both are chosen so the text on the band stays AA wherever they drift:
+   * darker same-hue blobs under white text, lighter ones under dark text.
+   * L3's red is already at 4.51:1, so its "light" sweep is a dark sheen.
+   */
+  blob: [string, string];
+  sweep: [string, number];
 }
 
 export const LEVEL_TOKENS: Record<number, LevelToken> = {
   0: {
     number: 0, key: "OPS", bg: "#6B7280", fg: "#FFFFFF", className: "lvl-ops", icon: "Wrench",
     ink: "#CBD5E1", band: ["#6B7280", "#374151"], bandFg: "#FFFFFF",
+    blob: ["#4B5563", "#1F2937"], sweep: ["#FFFFFF", 0.03],
   },
   // L1 is the calm baseline: a deep teal band with a white glow, not a white slab.
   1: {
     number: 1, key: "L1", bg: "#FFFFFF", fg: "#111827", className: "lvl-1", icon: "Info",
     ink: "#F8FAFC", band: ["#115E59", "#0B1A24"], bandFg: "#FFFFFF",
+    blob: ["#0F766E", "#134E4A"], sweep: ["#FFFFFF", 0.08],
   },
   2: {
     number: 2, key: "L2", bg: "#FFD400", fg: "#111827", className: "lvl-2", icon: "TriangleAlert",
     ink: "#FFD400", band: ["#FFD400", "#F2A900"], bandFg: "#111827",
+    blob: ["#FFE45C", "#FFC21A"], sweep: ["#FFFFFF", 0.22],
   },
   3: {
     number: 3, key: "L3", bg: "#E03131", fg: "#FFFFFF", className: "lvl-3", icon: "OctagonAlert",
     ink: "#FF6B6B", band: ["#E03131", "#9F1D1D"], bandFg: "#FFFFFF",
+    blob: ["#C92A2A", "#7F1D1D"], sweep: ["#000000", 0.14],
   },
   4: {
     number: 4, key: "L4", bg: "#7B2FBF", fg: "#FFFFFF", className: "lvl-4", icon: "Siren",
     ink: "#C39BF5", band: ["#7B2FBF", "#4A1A7A"], bandFg: "#FFFFFF",
+    blob: ["#6A28A8", "#3B1263"], sweep: ["#FFFFFF", 0.14],
   },
   // L5 is black on a dark page: the band gets a pulsing white edge (globals.css).
   5: {
     number: 5, key: "L5", bg: "#0B0B0B", fg: "#FFFFFF", className: "lvl-5", icon: "ShieldAlert",
     ink: "#F1F5F9", band: ["#0B0B0B", "#000000"], bandFg: "#FFFFFF",
+    blob: ["#27272A", "#18181B"], sweep: ["#FFFFFF", 0.1],
   },
 };
 
