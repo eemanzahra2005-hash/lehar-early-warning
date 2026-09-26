@@ -74,7 +74,7 @@ function LanguageSwitch() {
             aria-checked={active}
             lang={option.code}
             onClick={() => setLang(option.code)}
-            className={`relative z-10 min-h-9 min-w-12 rounded-full px-3 text-sm font-semibold transition-colors ${
+            className={`press relative z-10 min-h-11 min-w-12 rounded-full px-3 text-sm font-semibold transition-colors ${
               active ? "text-[#04201f]" : "text-muted hover:text-white"
             } ${option.code === "ur" ? "urdu leading-none" : ""}`}
           >
@@ -104,7 +104,7 @@ export function Header() {
       style={{ height: "var(--header-h)" }}
     >
       <div className="page flex h-full items-center justify-between gap-4">
-        <Link href="/" className="group flex shrink-0 items-center gap-2.5 rounded-lg" aria-label={`${t("app.name")} — ${t("app.tagline")}`}>
+        <Link href="/" className="group flex min-h-11 shrink-0 items-center gap-2.5 rounded-lg" aria-label={`${t("app.name")} — ${t("app.tagline")}`}>
           <WaveMark className="h-8 w-8 transition-transform duration-300 group-hover:rotate-[-6deg]" />
           <span className="font-display text-lg font-bold tracking-[0.18em] text-white">LEHAR</span>
           <span className="hidden text-sm text-muted xl:inline">{t("app.tagline")}</span>
@@ -120,7 +120,7 @@ export function Header() {
                     href={href}
                     title={t(key)}
                     aria-current={active ? "page" : undefined}
-                    className={`relative flex items-center gap-1.5 whitespace-nowrap rounded-lg px-2.5 py-2 text-sm font-medium transition-colors lg:px-3 ${
+                    className={`nav-link relative flex items-center gap-1.5 whitespace-nowrap rounded-lg px-2.5 py-2 text-sm font-medium transition-colors lg:px-3 ${
                       active ? "text-white" : "text-muted hover:bg-white/5 hover:text-white"
                     }`}
                   >
@@ -174,7 +174,9 @@ export function BottomNav() {
   }, [open]);
 
   const tabClass = (active: boolean) =>
-    `relative flex h-full w-full flex-col items-center justify-center gap-0.5 text-[11px] font-medium leading-tight ${
+    // 14 px labels (the phone minimum); a long label wraps to two lines
+    // rather than being cut off at 360 px.
+    `press relative flex h-full w-full flex-col items-center justify-center gap-0.5 text-sm font-medium leading-[1.1] ${
       active ? "text-white" : "text-muted"
     }`;
   const indicator = (
@@ -200,7 +202,7 @@ export function BottomNav() {
               <Link href={href} aria-current={active ? "page" : undefined} className={tabClass(active)}>
                 {active && indicator}
                 <Icon className="h-5 w-5" aria-hidden="true" />
-                <span className="max-w-full truncate px-1">{t(key)}</span>
+                <span className="line-clamp-2 max-w-full px-0.5 text-center">{t(key)}</span>
               </Link>
             </li>
           );
@@ -223,6 +225,7 @@ export function BottomNav() {
                 id="more-menu"
                 initial={{ opacity: 0, y: 8, scale: 0.98 }}
                 animate={{ opacity: 1, y: 0, scale: 1 }}
+                style={{ transformOrigin: "bottom" }}
                 transition={SPRING}
                 className="glass absolute bottom-[calc(100%+8px)] end-2 w-52 overflow-hidden bg-[#0e1524]/95 p-1.5"
               >

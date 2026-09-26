@@ -1,27 +1,37 @@
 "use client";
 
+import { AnimatePresence, m } from "framer-motion";
 import { LoaderCircle, RefreshCw, TriangleAlert } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useI18n } from "@/i18n/LanguageProvider";
 import { ApiError, onWakeStateChange } from "@/lib/api";
 
-/** Global "server waking up" notice, shown while any request is retrying. */
+/** Global "server waking up" notice, shown while any request is retrying. It slides down in, and away, like a toast. */
 export function WakeBanner() {
   const { t } = useI18n();
   const [waking, setWaking] = useState(false);
   useEffect(() => onWakeStateChange(setWaking), []);
   return (
     <div role="status" aria-live="polite">
+      <AnimatePresence initial={false}>
       {waking && (
-        <div className="border-b border-amber-300/20 bg-amber-400/10 text-sm text-amber-100 backdrop-blur">
+        <m.div
+          key="wake"
+          initial={{ opacity: 0, y: -12 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -12 }}
+          transition={{ type: "spring", stiffness: 380, damping: 32 }}
+          className="border-b border-amber-300/20 bg-amber-400/10 text-sm text-amber-100 backdrop-blur"
+        >
           <div className="page flex items-center gap-2.5 py-2.5">
             <LoaderCircle className="h-4 w-4 shrink-0 animate-spin text-warn" aria-hidden="true" />
             <p>
               <strong className="text-white">{t("wake.title")}</strong> — {t("wake.body")}
             </p>
           </div>
-        </div>
+        </m.div>
       )}
+      </AnimatePresence>
     </div>
   );
 }

@@ -65,7 +65,7 @@ export function DistrictPanel({ district, level, onClose }: { district: string; 
           <LevelBadge level={level} />
         </div>
         {onClose && (
-          <button type="button" onClick={onClose} className="btn-secondary h-10 w-10 shrink-0 !p-0" aria-label={t("common.close")}>
+          <button type="button" onClick={onClose} className="btn-secondary h-11 w-11 shrink-0 !p-0" aria-label={t("common.close")}>
             <X className="h-5 w-5" aria-hidden="true" />
           </button>
         )}
@@ -136,7 +136,7 @@ export function DistrictPanel({ district, level, onClose }: { district: string; 
         ) : (
           <StaggerList className="space-y-2">
             {latest.data.alerts.map((alert) => (
-              <StaggerItem key={alert.id} className={`${levelScope(alert.level)} rail rounded-xl border border-line bg-white/[0.03] p-3 ps-5`}>
+              <StaggerItem key={alert.id} className={`${levelScope(alert.level)} lift rail rounded-xl border border-line bg-white/[0.03] p-3 ps-5`}>
                 <div className="flex flex-wrap items-center gap-2">
                   <LevelBadge level={alert.level} size="sm" />
                   <span className="text-xs text-muted">

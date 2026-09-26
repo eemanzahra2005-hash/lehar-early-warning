@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { ChipGroup } from "@/components/Chips";
 import { LevelBadge, LevelIcon, levelScope } from "@/components/Level";
-import { StaggerItem, StaggerList } from "@/components/Motion";
+import { Reveal, StaggerItem, StaggerList } from "@/components/Motion";
 import { EmptyState, ErrorNotice, Skeleton } from "@/components/Status";
 import { useI18n } from "@/i18n/LanguageProvider";
 import { api } from "@/lib/api";
@@ -160,7 +160,7 @@ export default function AlertFeedPage() {
       ) : (
         <div className="space-y-8">
           {days.map(({ day, alerts }) => (
-            <section key={day} aria-label={day}>
+            <Reveal as="section" key={day} aria-label={day}>
               <h2 className="num mb-3 text-sm font-semibold text-muted">{day}</h2>
               {/* The timeline rail runs down the reading start; each dot is the level's ink. */}
               <StaggerList as="ol" className="relative space-y-3 ps-7 before:absolute before:inset-y-2 before:start-[9px] before:w-px before:bg-gradient-to-b before:from-white/25 before:to-white/5">
@@ -184,7 +184,7 @@ export default function AlertFeedPage() {
                   </StaggerItem>
                 ))}
               </StaggerList>
-            </section>
+            </Reveal>
           ))}
         </div>
       )}

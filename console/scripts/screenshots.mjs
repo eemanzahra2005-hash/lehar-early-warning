@@ -26,7 +26,7 @@ const PAGES = [
   { name: "subscribe", path: "/subscribe" },
 ];
 const VIEWPORTS = [
-  { name: "phone", width: 360, height: 780 },
+  { name: "phone", width: 390, height: 844 },
   { name: "desktop", width: 1280, height: 900 },
 ];
 

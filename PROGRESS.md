@@ -793,6 +793,88 @@ the design-system section of [console/README.md](console/README.md).
 data. When the DL forecast is disabled (503), the map panel's fallback chart
 stays on its loading skeleton for that long.
 
+## Phase 5c — Console interaction polish + responsive pass — **DONE**
+
+Hover "pops", transitions and a mobile/tablet pass on the Phase 5b design.
+**No functional or backend changes.** Routes, API calls and data handling
+are unchanged. The OS "reduce motion" setting is still respected:
+framer-motion through `<MotionConfig reducedMotion="user">`, and the CSS
+effects through the `prefers-reduced-motion` block in `globals.css`.
+
+- [x] Level cards (home, "Districts per level"):
+      - on hover or keyboard focus a card scales to 1.03, lifts 4 px and
+        gets a ring in its level colour, and its share bar gets a light sweep
+      - a spring popover above the card lists up to 5 districts at that
+        level, then "+N more" (names from `/alerts/active`, the same data
+        the mini-map uses)
+      - touch: a tap toggles it; Escape closes it
+      - phones show the names in a panel under the swipe row, because a
+        popover would be clipped by the row
+- [x] Card lift + glow: 3 px, 180 ms ease-out, in the card's level colour
+      (teal when it has no level). Applies to district alert cards, map
+      panel alert items, timeline items, subscribe cards and admin KPI tiles
+      (each tile glows in its own tone). Keyboard focus inside a card lifts
+      it too
+- [x] Buttons squash to 0.97 on press and get brighter with a glow on
+      hover. Desktop nav gets a hover underline that slides from the reading
+      start. Filter chips keep their `layoutId` sliding highlight
+- [x] Transitions:
+      - route change is 220 ms fade + 8 px rise (enter only; why is in
+        `Motion.tsx`)
+      - lists stagger 40 ms as they scroll into view (`whileInView`, once)
+      - new `Reveal` for home sections and alert-feed day groups
+      - new `FadeIn` for the skeleton → mini-map cross-fade
+      - the "server waking up" notice slides in and out like a toast (the
+        console has no other toasts)
+      - unchanged from 5b: counters, hero cross-fade, live dot, L≥3 pulse
+        rings, language pill, L4/5 takeover
+- [x] Map district panel:
+      - phones (<768 px): a bottom sheet above the tab bar that springs up;
+        drag its handle down to close (the close button still works)
+      - tablets (768–1023 px): overlay at 45 % of the map's width
+      - desktop: 440 px, as before
+      - in Urdu, Leaflet's zoom buttons move to the top-right, so the panel
+        (which opens on the left) never covers them
+- [x] Responsive:
+      - level strip: snap-scroll row with the next card peeking in on
+        phones, a 3 + 2 grid on tablets, five in a row on desktop
+      - two columns from 768 px on home, subscribe and predict
+      - hero numeral `clamp(64px, 14vw, 160px)`
+      - payload table on `/alerts/[id]` becomes stacked cards on phones
+      - touch targets ≥ 44 px on phones: chips, language pill, logo, close
+        button, district checkboxes, `btn-secondary`
+      - text is at least 14 px on phones, and tab labels wrap to two lines
+        instead of being cut off
+- [x] Checked in Chrome (Playwright, scratch scripts not shipped) on all 7
+      routes at 360, 390, 414, 768, 1024 and 1280 px, in EN and UR (RTL):
+      - no horizontal scroll and no element outside the viewport
+      - on phones, no text under 14 px and no touch target under 44 px
+      - no console errors
+      - popover via hover, keyboard (Tab, Escape) and tap
+      - bottom sheet drag-to-close
+      - tablet panel at 45 %, strip rows at 768 px are 3 + 2
+- [x] Quality gates: `npm run lint`, `npx tsc --noEmit` and `npm run build`
+      pass. vitest: **28 passed**. Backend pytest, unchanged: **700 passed**
+- [x] `docs/screenshots/`: home, map, alerts and subscribe at 390 px (was
+      360 px) and 1280 px (`npm run screenshots`)
+- [x] Lighthouse 12.8.2, mobile preset, local production build, 2 runs per
+      route. A same-day baseline of the 5b build was measured on the same
+      machine:
+      - accessibility: **100** on all 7 routes
+      - performance: `/admin` 82–89, `/explain` 87–88, `/predict` 83–84,
+        `/alerts` 82–84, `/subscribe` 81–83 (5b same day: 83–84), `/map`
+        75–80 (5b: 77–79), `/` 69–71 (5b: 75–82)
+      - **Below the 85 target:** `/`, `/map`, `/subscribe` and `/alerts`
+        (as `/`, `/map` and `/alerts` already were in 5b)
+      - `/` costs about 300–500 ms more main-thread script under 4× CPU
+        throttling, from the level strip's motion components and the in-view
+        observers. CLS stays ≤ 0.035
+      - two regressions found while measuring were fixed:
+        - opacity fades on the big map and subscribe blocks became late
+          LCP candidates, so they were removed
+        - a ResizeObserver re-rendered the whole map view on load, so it
+          now runs only when a tablet panel is open
+
 ## Phase 6 — Free deployment (Neon + Render + Vercel + cron-job.org)
 
 - [ ] PostgreSQL on Neon (free tier)

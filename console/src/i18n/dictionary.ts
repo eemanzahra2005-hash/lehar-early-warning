@@ -68,6 +68,10 @@ export const en = {
   "board.levelsUnavailable": "Level descriptions could not be loaded.",
   "board.live": "live",
   "board.levelStrip": "Districts per level",
+  "board.levelDistricts": "Districts at Level {n}",
+  "board.moreDistricts": "+{n} more",
+  "board.noDistricts": "No district is at this level right now.",
+  "board.stripHint": "Hover, focus or tap a level to see its districts.",
   "board.openMap": "Open full map",
   "board.mapCaption": "Each district coloured by its current level. Select one to open it on the full map.",
 
@@ -255,6 +259,10 @@ export const ur: Record<DictKey, string> = {
   "board.levelsUnavailable": "درجات کی تفصیل لوڈ نہیں ہو سکی۔",
   "board.live": "براہ راست",
   "board.levelStrip": "ہر درجے میں اضلاع",
+  "board.levelDistricts": "درجہ {n} والے اضلاع",
+  "board.moreDistricts": "+{n} مزید",
+  "board.noDistricts": "اس وقت کوئی ضلع اس درجے پر نہیں۔",
+  "board.stripHint": "اضلاع دیکھنے کے لیے کسی درجے پر ٹیپ کریں یا اسے منتخب کریں۔",
   "board.openMap": "پورا نقشہ کھولیں",
   "board.mapCaption": "ہر ضلع اپنے موجودہ درجے کے رنگ میں۔ پورے نقشے پر کھولنے کے لیے کوئی ضلع منتخب کریں۔",
 

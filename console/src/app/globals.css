@@ -71,6 +71,7 @@
   --warn: #fbbf24;
   --danger: #ff6b6b;
 
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1); /* EASE_OUT in Motion.tsx */
   --header-h: 60px;
   --tabbar-h: 64px;
   color-scheme: dark;
@@ -194,12 +195,29 @@ html[lang="en"] .urdu {
   -webkit-backdrop-filter: blur(16px) saturate(140%);
   box-shadow: 0 1px 0 rgb(255 255 255 / 0.04) inset, 0 20px 40px -24px rgb(0 0 0 / 0.6);
 }
+/*
+ * Hover "pop" for cards (Phase 5c): a 3 px lift plus a soft ring and halo
+ * in the card's level colour (--lvl-glow from a .lvl-scope-* ancestor), or
+ * the teal accent when the card has no level. Keyboard users get the same
+ * lift when focus is anywhere inside the card (:has(:focus-visible)), so
+ * nothing is hover-only. 180 ms ease-out: quick, never bouncy.
+ */
 @utility lift {
-  transition: transform 150ms ease, box-shadow 150ms ease, border-color 150ms ease, background-color 150ms ease;
-  &:hover {
-    transform: translateY(-2px);
-    border-color: rgb(255 255 255 / 0.18);
-    box-shadow: 0 1px 0 rgb(255 255 255 / 0.06) inset, 0 24px 48px -20px rgb(0 0 0 / 0.7);
+  transition:
+    transform 180ms var(--ease-out),
+    box-shadow 180ms var(--ease-out),
+    border-color 180ms var(--ease-out),
+    background-color 180ms var(--ease-out);
+  &:hover,
+  &:focus-visible,
+  &:has(:focus-visible) {
+    transform: translateY(-3px);
+    border-color: rgb(255 255 255 / 0.2);
+    box-shadow:
+      0 1px 0 rgb(255 255 255 / 0.06) inset,
+      0 0 0 1px var(--lvl-glow, rgb(94 234 212 / 0.3)),
+      0 14px 36px -16px var(--lvl-glow, rgb(94 234 212 / 0.45)),
+      0 24px 48px -20px rgb(0 0 0 / 0.7);
   }
 }
 
@@ -212,18 +230,24 @@ html[lang="en"] .urdu {
     @apply glass p-4 sm:p-6;
   }
   .btn-primary {
-    @apply lift inline-flex min-h-11 items-center justify-center gap-2 rounded-xl px-5 py-2.5 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-50;
+    @apply inline-flex min-h-11 items-center justify-center gap-2 rounded-xl px-5 py-2.5 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-50;
     background: linear-gradient(135deg, #5eead4, #38bdf8);
     color: #04201f;
     box-shadow: 0 8px 24px -10px rgb(94 234 212 / 0.6);
   }
   .btn-secondary {
-    @apply lift inline-flex min-h-10 items-center justify-center gap-1.5 rounded-xl px-3.5 py-2 text-sm font-medium;
+    @apply inline-flex min-h-11 items-center justify-center gap-1.5 rounded-xl px-3.5 py-2 text-sm font-medium;
     background: var(--glass-strong);
     border: 1px solid var(--glass-border);
     color: var(--text);
   }
-  .btn-secondary:hover { background: rgb(255 255 255 / 0.12); }
+  /* Buttons: brighter + a subtle glow on hover, a small squash on press. */
+  .btn-primary, .btn-secondary {
+    transition: transform 150ms var(--ease-out), filter 150ms var(--ease-out), box-shadow 150ms var(--ease-out), background-color 150ms var(--ease-out);
+  }
+  .btn-primary:hover:not(:disabled) { filter: brightness(1.08); box-shadow: 0 10px 30px -8px rgb(94 234 212 / 0.8); }
+  .btn-secondary:hover { background: rgb(255 255 255 / 0.12); box-shadow: 0 0 0 1px rgb(255 255 255 / 0.08), 0 0 20px -6px rgb(94 234 212 / 0.55); }
+  .btn-primary:active:not(:disabled), .btn-secondary:active, .press:active { transform: scale(0.97); }
   .field-label {
     @apply mb-1.5 block text-sm font-medium;
     color: var(--text);
@@ -257,7 +281,7 @@ html[lang="en"] .urdu {
   .link { color: var(--accent); text-decoration: underline; text-underline-offset: 3px; text-decoration-color: rgb(94 234 212 / 0.4); }
   .link:hover { text-decoration-color: var(--accent); }
   .chip {
-    @apply inline-flex min-h-9 items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-medium;
+    @apply inline-flex min-h-11 items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-medium md:min-h-9;
     border: 1px solid var(--glass-border);
     background: var(--glass);
     color: var(--text);
@@ -348,7 +372,7 @@ html[lang="en"] .urdu {
 .hero-numeral {
   font-family: var(--font-display);
   font-weight: 700;
-  font-size: clamp(72px, 14vw, 160px);
+  font-size: clamp(64px, 14vw, 160px);
   line-height: 0.85;
   letter-spacing: -0.06em;
   font-variant-numeric: tabular-nums;
@@ -428,7 +452,9 @@ html[lang="en"] .urdu {
 @media (prefers-reduced-motion: reduce) {
   .band-mesh, .pulse-ring, .live-dot::after, .skeleton::after, .band-edge, .animate-spin { animation: none !important; }
   .band-edge { opacity: 1; }
-  .lift, .lift:hover { transform: none !important; transition: none; }
+  .lift, .lift:hover, .lift:focus-visible, .lift:has(:focus-visible),
+  .btn-primary:active, .btn-secondary:active, .press:active, .pop-card { transform: none !important; }
+  .lift, .nav-link::after, .pop-bar::after { transition: none; animation: none !important; }
   html { scroll-behavior: auto; }
 }
 
@@ -454,6 +480,10 @@ html[lang="en"] .urdu {
   color: var(--text);
   border-color: var(--glass-border);
 }
+/* RTL: mirror the zoom buttons to the top-right, so the district panel
+   (which opens on the reading end, the left) never covers them. */
+[dir="rtl"] .leaflet-top.leaflet-left { left: auto; right: 0; }
+[dir="rtl"] .leaflet-top.leaflet-left .leaflet-control { margin-left: 0; margin-right: 10px; }
 .leaflet-interactive.district-path { transition: fill-opacity 150ms ease; }
 .leaflet-interactive.district-path:hover { filter: drop-shadow(0 0 6px rgb(255 255 255 / 0.55)); }
 
@@ -466,6 +496,58 @@ html[lang="en"] .urdu {
 /* Home mini-map: a white outline on hover; CSS beats the SVG attributes. */
 .mini-district { cursor: pointer; transition: stroke-width 150ms ease; }
 .mini-district:hover { stroke: #ffffff; stroke-opacity: 1; stroke-width: 2.2; }
+
+/* Desktop nav: a thin underline slides in from the reading start on hover
+   (the active page's underline is the sliding framer-motion indicator). */
+.nav-link::after {
+  content: "";
+  position: absolute;
+  inset-inline: 0.5rem;
+  bottom: -11px;
+  height: 2px;
+  border-radius: 9999px;
+  background: rgb(255 255 255 / 0.35);
+  transform: scaleX(0);
+  transform-origin: var(--origin, left);
+  transition: transform 200ms var(--ease-out);
+}
+.nav-link:hover::after, .nav-link:focus-visible::after { transform: scaleX(1); }
+.nav-link[aria-current="page"]::after { display: none; }
+
+/* Level strip cards (home): the bigger pop, in the level's own colour. */
+.pop-card {
+  transition: transform 200ms var(--ease-out), box-shadow 200ms var(--ease-out), border-color 200ms var(--ease-out);
+}
+.pop-card:hover, .pop-card:focus-visible, .pop-card[aria-expanded="true"] {
+  border-color: var(--lvl-ink);
+  box-shadow:
+    0 0 0 1px var(--lvl-ink),
+    0 0 0 5px var(--lvl-glow),
+    0 18px 40px -14px var(--lvl-glow);
+}
+/* ... and its share bar gets a light sweep across it. */
+.pop-bar { position: relative; overflow: hidden; }
+.pop-bar::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, rgb(255 255 255 / 0.55), transparent);
+}
+.pop-card:hover .pop-bar::after, .pop-card:focus-visible .pop-bar::after, .pop-card[aria-expanded="true"] .pop-bar::after {
+  animation: shimmer 900ms var(--ease-out) 1;
+}
+/* Phones: the strip is a horizontal snap row; hide its scrollbar (it is
+   still swipeable and keyboard-scrollable). */
+.snap-row { scrollbar-width: none; }
+.snap-row::-webkit-scrollbar { display: none; }
+
+/* Phones: nothing smaller than 14 px (small print is hard to read in the
+   field). Unlayered, so it beats Tailwind's utility layer. */
+@media (max-width: 767px) {
+  .text-xs { font-size: 0.875rem; line-height: 1.25rem; }
+  .eyebrow, html[lang="ur"] .eyebrow { font-size: 0.875rem; }
+}
 
 /* Bars grow from the reading start: left in English, right in Urdu. */
 [dir="rtl"] { --origin: right; }

@@ -207,13 +207,13 @@ export default function PredictPage() {
       {meta.error ? (
         <ErrorNotice error={meta.error} onRetry={meta.reload} />
       ) : !meta.data ? (
-        <div className="grid gap-6 lg:grid-cols-2">
+        <div className="grid gap-6 md:grid-cols-2">
           <Skeleton className="h-96" />
         </div>
       ) : (
-        <div className="grid items-start gap-6 lg:grid-cols-2">
+        <div className="grid items-start gap-6 md:grid-cols-2">
           <form onSubmit={submit} className="card space-y-4">
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-1 lg:grid-cols-2">
               <label className="block">
                 <span className="field-label">{t("common.district")}</span>
                 <select className="field-input" required value={form.district} onChange={(e) => set("district", e.target.value)}>

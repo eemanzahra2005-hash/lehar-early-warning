@@ -19,14 +19,15 @@ function PayloadTable({ payload }: { payload: Record<string, unknown> }) {
   if (entries.length === 0) return null;
   return (
     <div className="overflow-x-auto" dir="ltr">
-      <table className="w-full text-left text-sm">
-        <tbody>
+      {/* Phones: each row stacks (key above value) so nothing scrolls sideways. */}
+      <table className="w-full text-left text-sm max-sm:block">
+        <tbody className="max-sm:block max-sm:space-y-2">
           {entries.map(([key, value]) => (
-            <tr key={key} className="border-b border-white/5 align-top last:border-0">
-              <th scope="row" className="num py-2 pe-4 font-medium text-muted">
+            <tr key={key} className="border-b border-white/5 align-top last:border-0 max-sm:block max-sm:rounded-xl max-sm:border max-sm:bg-white/[0.03] max-sm:p-3 max-sm:last:border">
+              <th scope="row" className="num py-2 pe-4 font-medium text-muted max-sm:block max-sm:p-0">
                 {key}
               </th>
-              <td className="num py-2 break-all text-ink">
+              <td className="num py-2 break-all text-ink max-sm:block max-sm:p-0 max-sm:pt-1">
                 {typeof value === "object" ? JSON.stringify(value) : String(value)}
               </td>
             </tr>
@@ -80,7 +81,7 @@ function AlertDetail({ initial }: { initial: AlertResponse }) {
       {/* The body is the rule's fixed template text, shown verbatim (never generated). */}
       <p className="max-w-3xl whitespace-pre-line text-lg leading-relaxed text-ink">{pick(alert.body_en, alert.body_ur)}</p>
 
-      <dl className="glass grid grid-cols-[auto_1fr] gap-x-6 gap-y-2 p-5 text-sm">
+      <dl className="glass grid grid-cols-1 gap-x-6 gap-y-1 p-5 text-sm sm:grid-cols-[auto_1fr] sm:gap-y-2">
         <dt className="text-muted">{t("detail.created")}</dt>
         <dd className="num text-ink">{formatDateTime(alert.created_at, lang)}</dd>
         {alert.resolved_at && (

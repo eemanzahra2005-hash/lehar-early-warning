@@ -37,7 +37,7 @@ export function ChipGroup({
             role="radio"
             aria-checked={selected}
             onClick={() => onChange(option.value)}
-            className={`relative isolate inline-flex min-h-9 items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm font-medium transition-colors ${
+            className={`press relative isolate inline-flex min-h-11 items-center transition-[transform,background-color,color] md:min-h-9 gap-1.5 rounded-full border px-3 py-1.5 text-sm font-medium ${
               selected ? "border-accent/60 text-white" : "border-line bg-white/[0.03] text-ink hover:bg-white/[0.08]"
             }`}
           >

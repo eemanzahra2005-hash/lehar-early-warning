@@ -14,7 +14,11 @@ import { useApi } from "@/lib/useApi";
 
 function Kpi({ label, value, icon: Icon, tone = "#5eead4" }: { label: string; value: number; icon: typeof Activity; tone?: string }) {
   return (
-    <StaggerItem as="div" className="glass lift relative overflow-hidden p-4">
+    <StaggerItem
+      as="div"
+      className="glass lift relative overflow-hidden p-4"
+      style={{ "--lvl-glow": `color-mix(in srgb, ${tone} 45%, transparent)` } as React.CSSProperties}
+    >
       <span
         aria-hidden="true"
         className="absolute -end-6 -top-6 h-20 w-20 rounded-full opacity-25 blur-2xl"

@@ -43,8 +43,11 @@ export function MotionProvider({ children }: { children: React.ReactNode }) {
 }
 
 /**
- * 250 ms fade + rise when the route changes (enter only: the App Router
- * swaps pages synchronously, so an exit animation would replay the NEW page).
+ * 220 ms fade + 8 px rise when the route changes. Enter only, on purpose:
+ * the App Router swaps `children` synchronously, so an <AnimatePresence>
+ * exit would animate the NEW page's content out under the old key (a
+ * visible double flash) unless the router's internals are frozen, which
+ * Next does not support. The enter half gives the same feel safely.
  * The EN <-> UR switch mirrors the whole layout to RTL; it gets a soft fade
  * in place rather than a remount, so forms keep what the user typed.
  */
@@ -74,7 +77,7 @@ export function PageTransition({ children }: { children: React.ReactNode }) {
         key={pathname}
         initial={hasNavigated ? { opacity: 0, y: 8 } : false}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.25, ease: EASE_OUT }}
+        transition={{ duration: 0.22, ease: EASE_OUT }}
       >
         {children}
       </m.div>
@@ -91,7 +94,11 @@ const itemVariants = {
   show: { opacity: 1, y: 0, transition: { duration: 0.3, ease: EASE_OUT } },
 };
 
-/** A list whose children reveal one after another (40 ms apart). */
+// Reveal a little before the element is fully on screen, and only once:
+// replaying on every scroll would be distracting in an emergency tool.
+const VIEWPORT = { once: true, margin: "0px 0px -40px 0px" } as const;
+
+/** A list whose children reveal one after another (40 ms apart) as it scrolls into view. */
 export function StaggerList({
   children,
   className,
@@ -100,7 +107,7 @@ export function StaggerList({
 }: { children: React.ReactNode; className?: string; as?: "ul" | "ol" | "div" } & React.AriaAttributes) {
   const Tag = as === "ol" ? m.ol : as === "div" ? m.div : m.ul;
   return (
-    <Tag className={className} variants={listVariants} initial="hidden" animate="show" {...rest}>
+    <Tag className={className} variants={listVariants} initial="hidden" whileInView="show" viewport={VIEWPORT} {...rest}>
       {children}
     </Tag>
   );
@@ -111,17 +118,56 @@ export function StaggerItem({
   className,
   as = "li",
   style,
+  onPointerEnter,
+  onPointerLeave,
 }: {
   children: React.ReactNode;
   className?: string;
   as?: "li" | "div";
   style?: React.CSSProperties;
+  onPointerEnter?: (event: React.PointerEvent) => void;
+  onPointerLeave?: (event: React.PointerEvent) => void;
 }) {
   const Tag = as === "div" ? m.div : m.li;
   return (
-    <Tag className={className} variants={itemVariants} style={style}>
+    <Tag className={className} variants={itemVariants} style={style} onPointerEnter={onPointerEnter} onPointerLeave={onPointerLeave}>
       {children}
     </Tag>
+  );
+}
+
+/** A section that fades and rises into place the first time it scrolls into view. */
+export function Reveal({
+  children,
+  className,
+  as = "div",
+  ...rest
+}: { children: React.ReactNode; className?: string; as?: "div" | "section" } & React.AriaAttributes) {
+  const Tag = as === "section" ? m.section : m.div;
+  return (
+    <Tag
+      className={className}
+      initial={{ opacity: 0, y: 16 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={VIEWPORT}
+      transition={{ duration: 0.4, ease: EASE_OUT }}
+      {...rest}
+    >
+      {children}
+    </Tag>
+  );
+}
+
+/**
+ * Cross-fades loaded content in where its shimmer skeleton was (the
+ * skeleton unmounts, this fades up from 0). Opacity only, so the layout
+ * does not move.
+ */
+export function FadeIn({ children, className }: { children: React.ReactNode; className?: string }) {
+  return (
+    <m.div className={className} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.3, ease: "easeOut" }}>
+      {children}
+    </m.div>
   );
 }
 

@@ -84,7 +84,7 @@ function TelegramCard({ districts }: { districts: string[] }) {
               initial={{ opacity: 0, y: 12, scale: 0.98 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               transition={{ duration: 0.35, ease: EASE_OUT }}
-              className="flex flex-col gap-5 rounded-2xl border border-sky-300/20 bg-sky-400/[0.06] p-5 sm:flex-row sm:items-center"
+              className="flex flex-col gap-5 rounded-2xl border border-sky-300/20 bg-sky-400/[0.06] p-5 sm:flex-row sm:items-center md:flex-col md:items-stretch xl:flex-row xl:items-center"
             >
               <div className="flex flex-col items-center gap-2">
                 <QrCode value={link.url} label={`${t("sub.openTelegram")} — ${link.district}`} />
@@ -220,7 +220,7 @@ function EmailCard({ byProvince }: { byProvince: Record<string, string[]> }) {
                     <button
                       type="button"
                       onClick={() => toggle(d)}
-                      className="inline-flex min-h-8 items-center gap-1 rounded-full border border-accent/50 bg-accent/15 px-2.5 text-xs font-medium text-white"
+                      className="press inline-flex min-h-11 items-center gap-1 rounded-full border border-accent/50 bg-accent/15 px-3 text-xs font-medium text-white transition-transform md:min-h-8 md:px-2.5"
                     >
                       {d}
                       <X className="h-3.5 w-3.5" aria-hidden="true" />
@@ -246,13 +246,13 @@ function EmailCard({ byProvince }: { byProvince: Record<string, string[]> }) {
             {filtered.map(([province, list]) => (
               <div key={province}>
                 <p className="eyebrow mb-1.5">{province}</p>
-                <div className="grid grid-cols-2 gap-1 sm:grid-cols-3">
+                <div className="grid grid-cols-2 gap-1 sm:grid-cols-3 md:grid-cols-2 xl:grid-cols-3">
                   {list.map((d) => {
                     const on = selected.includes(d);
                     return (
                       <label
                         key={d}
-                        className={`flex min-h-9 cursor-pointer items-center gap-2 rounded-lg px-2 py-1 text-sm transition-colors ${
+                        className={`flex min-h-11 cursor-pointer items-center gap-2 rounded-lg px-2 py-1 text-sm transition-colors md:min-h-9 ${
                           on ? "bg-accent/10 text-white" : "text-ink hover:bg-white/5"
                         }`}
                       >
@@ -276,7 +276,7 @@ function EmailCard({ byProvince }: { byProvince: Record<string, string[]> }) {
           <legend className="field-label">{t("sub.minLevel")}</legend>
           {/* Level 1 is in-app only, so email starts at level 2 (schemas.py). */}
           <p className="text-xs text-muted">{t("sub.minLevelHelp")}</p>
-          <div className="grid gap-2 sm:grid-cols-2">
+          <div className="grid gap-2 sm:grid-cols-2 md:grid-cols-1 lg:grid-cols-2">
             {[2, 3, 4, 5].map((n) => (
               <label
                 key={n}
@@ -335,12 +335,12 @@ export default function SubscribePage() {
       {meta.error ? (
         <ErrorNotice error={meta.error} onRetry={meta.reload} />
       ) : !meta.data ? (
-        <div className="grid gap-6 lg:grid-cols-2">
+        <div className="grid gap-6 md:grid-cols-2">
           <Skeleton className="h-80" />
           <Skeleton className="h-80" />
         </div>
       ) : (
-        <div className="grid items-start gap-6 lg:grid-cols-2">
+        <div className="grid items-start gap-6 md:grid-cols-2">
           <TelegramCard districts={meta.data.districts} />
           <EmailCard byProvince={meta.data.districts_by_province} />
         </div>
