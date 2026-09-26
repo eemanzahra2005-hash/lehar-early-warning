@@ -61,3 +61,9 @@ ops_events.jsonl
 # survives in git even though the bytes do not. See docs/FLOOD_DL.md.
 data/flood_history/*
 !data/flood_history/_manifest.json
+
+# LEHAR Phase 5a: the Next.js Early-Warning Console (console/). Dependencies,
+# build output and local env files are never committed; console/.env.example is.
+console/node_modules/
+console/.next/
+console/.env*.local

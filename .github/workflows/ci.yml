@@ -55,3 +55,41 @@ jobs:
         # Not deployed anywhere (Phase 13 wires it into docker-compose.yml)
         # — this just fails fast if a dependency stops installing cleanly.
         run: docker build -f backend/Dockerfile -t smart-irrigation-backend:ci .
+
+  console:
+    # LEHAR Phase 5a: the Next.js Early-Warning Console in console/. Vercel
+    # builds it from the same directory (Root Directory = console); this job
+    # proves the build, lint, types and unit tests before it gets there.
+    name: Console (lint, typecheck, test, build)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: console
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: console/package-lock.json
+
+      - name: Install exact dependencies
+        run: npm ci
+
+      - name: Lint (ESLint)
+        run: npm run lint
+
+      - name: Typecheck
+        run: npx tsc --noEmit
+
+      - name: Unit tests (vitest)
+        # levels.test.ts reads backend/app/services/alerts/levels.py from this
+        # same checkout, so the colour tokens cannot drift from the engine.
+        run: npm test
+
+      - name: Build
+        env:
+          NEXT_TELEMETRY_DISABLED: "1"
+          NEXT_PUBLIC_API_URL: http://localhost:8000
+        run: npm run build

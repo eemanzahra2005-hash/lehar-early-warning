@@ -655,10 +655,74 @@ The first real scheduled run is a Phase 6 check.
 
 ## Phase 5 — Next.js Early-Warning Console (separate repo)
 
-- [ ] New Next.js console in its own repository, talking to this API
-- [ ] Flood views carry the research-advisory disclaimer (CLAUDE.md rule 12)
-- [ ] This repo's vanilla-JS frontend stays as-is (CLAUDE.md rule 7 still
-      governs everything in `frontend/`)
+> **Location changed in Phase 5a:** by request, the console was built in
+> `console/` **inside this repository** (Vercel Root Directory = `console`),
+> not in a separate repository. CLAUDE.md rule 7 still covers only
+> `frontend/`.
+
+- [~] New Next.js console talking to this API. Scaffold + pages done in 5a
+      (in this repo, see above)
+- [x] Flood views carry the research-advisory disclaimer (CLAUDE.md rule 12).
+      Every console page shows it in the footer in EN + UR
+- [x] This repo's vanilla-JS frontend stays as-is (`frontend/` untouched in 5a)
+
+## Phase 5a — Next.js Early-Warning Console: scaffold + pages — **DONE**
+
+A new Next.js 16 (App Router, TypeScript, Tailwind 4, ESLint) app in
+`console/`. **No backend code changed.** Details:
+[console/README.md](console/README.md).
+
+- [x] Scaffold (npm, `src/`), with every dependency pinned exactly. Runtime
+      deps are kept small: `react-leaflet` + `leaflet`, `recharts`,
+      `lucide-react`. `pakistan_districts.geojson` is copied to
+      `console/public/geo/`. The root `.gitignore` ignores
+      `console/node_modules`, `console/.next` and `console/.env*.local`
+- [x] Level design system:
+      - CSS tokens (L1 white, L2 yellow, L3 red, L4 purple, L5 black, OPS
+        grey) mirror `levels.py`. A test reads `levels.py` to prove they
+        match and that every pair meets WCAG AA
+      - never colour alone: always icon + level number + name
+      - names and actions come live from `GET /alerts/levels`
+- [x] Typed API client (`src/lib/api.ts`) mirroring `schemas.py`:
+      - base URL from `NEXT_PUBLIC_API_URL`
+      - bearer token in `localStorage` for admin calls, with one refresh on 401
+      - "server waking up" handling: network error or bare 502/503/504 is
+        retried with backoff for up to 60 s behind an EN/UR banner. LEHAR's
+        own JSON 503s are not retried; they are shown as the honest reason
+- [x] Pages: `/` Alert Board (aria-live national banner, district cards
+      sorted by level, 48 h all-clear notices, **Level 4/5 full-screen
+      takeover** with colour flash, big number, actions, Acknowledge, sound
+      toggle OFF by default), `/map` (choropleth + district panel: 7-day
+      observed discharge + DL D+1..D+3 forecast, falling back to Flood Watch
+      observations on 503), `/alerts` + `/alerts/[id]`, `/subscribe`
+      (Telegram deep link, email double opt-in), `/predict` (+ top SHAP
+      reasons), `/explain`, `/admin` (login, stats, models, drift). EN/UR
+      toggle with RTL. Disclaimer in EN + UR on every page
+- [x] Takeover "Acknowledge" is **per device** (`localStorage`), because
+      `POST /alerts/{id}/ack` clears an alert for every visitor. The global
+      ack is shown only to a logged-in admin on the detail page
+- [x] Quality gates: `npm run lint`, `npx tsc --noEmit` and `npm run build`
+      pass. vitest: **25 passed** (level mapping + token drift + contrast,
+      i18n completeness + placeholder parity, API retry/backoff, flood
+      series)
+- [x] CI: new `console` job in `.github/workflows/ci.yml` (npm ci, lint,
+      typecheck, test, build on Node 24)
+- [x] Measured first-load JS (production build, from
+      `.next/diagnostics/route-bundle-stats.json`, gzip computed locally):
+      ~146–151 KB gzip on every route except `/explain` (262 KB gzip,
+      recharts). The map's chart is lazy-loaded, so `/map` stays at 151 KB
+- [x] Smoke test against a locally running backend: every route answers
+      200 with the disclaimer in the HTML; response shapes match the types;
+      CORS allows `http://localhost:3000`
+- [x] Backend gaps listed in `console/README.md`: no `GET /alerts/{id}`,
+      unauthenticated global ack, no server-side OPS exclusion or time filter
+      on `GET /alerts`, and no list of forecast-capable districts
+
+**Not verified in a real browser.** No browser automation was available on
+the development machine. The pages were checked by build, typecheck, lint,
+unit tests and HTTP smoke tests only. Leaflet rendering, the takeover
+(which needs a real level-4/5 alert) and the RTL layout still need a manual
+look (with screenshots into `docs/screenshots/`) before Phase 6.
 
 ## Phase 6 — Free deployment (Neon + Render + Vercel + cron-job.org)
 
