@@ -5,7 +5,8 @@ import { ArrowUpRight, CircleCheck, MapPin } from "lucide-react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { HeroWaves, LevelBackdrop, PulsingIcon } from "@/components/LevelBand";
+import { HeroGlobePanel } from "@/components/HeroDistricts";
+import { HeroHud, HeroWaves, LevelBackdrop, PulsingIcon } from "@/components/LevelBand";
 import { LevelBadge, LevelIcon, levelScope, useLevelLabel } from "@/components/Level";
 import { useLevels } from "@/components/LevelsProvider";
 import { CountUp, EASE_OUT, FadeIn, Reveal, SPRING, StaggerItem, StaggerList, usePrefersReducedMotion } from "@/components/Motion";
@@ -31,8 +32,9 @@ const REFRESH_MS = 60_000;
 const ALL_CLEAR_WINDOW_MS = 48 * 3600 * 1000;
 // The hero and its loading skeleton share a minimum height, so the page
 // below does not jump when the national level arrives (layout shift). The
-// extra bottom padding is room for the wave edge.
-const HERO_MIN_H = "min-h-[486px] sm:min-h-[496px] md:min-h-[416px] lg:min-h-[448px]";
+// extra bottom padding is room for the wave edge. Below lg the globe stacks
+// under the text; from lg it sits beside it. Under 360 px the globe hides.
+const HERO_MIN_H = "min-h-[700px] min-[360px]:min-h-[880px] sm:min-h-[900px] md:min-h-[830px] lg:min-h-[620px]";
 
 // Load choreography: the numeral springs in first, then the text lines fade
 // up one after another, 60 ms apart. Only on first appearance; a poll that
@@ -125,7 +127,14 @@ function HeroNumeral({ level }: { level: number }) {
   );
 }
 
-function Hero({ summary }: { summary: AlertHealthSummaryResponse }) {
+function Hero({
+  summary,
+  levelByDistrict,
+}: {
+  summary: AlertHealthSummaryResponse;
+  /** Every district's current level, or null while /alerts/active loads. */
+  levelByDistrict: Record<string, number> | null;
+}) {
   const { t, lang } = useI18n();
   const { levels } = useLevels();
   const level = summary.highest_level;
@@ -148,57 +157,63 @@ function Hero({ summary }: { summary: AlertHealthSummaryResponse }) {
   return (
     <section aria-labelledby="banner-title" className={`band ${levelScope(level)} ${HERO_MIN_H}`}>
       <LevelBackdrop level={level} hero />
+      <HeroHud />
       <p className="sr-only" aria-live={urgent ? "assertive" : "polite"} aria-atomic="true">
         {announcement}
       </p>
       <m.div
-        className="page pb-14 pt-10 sm:pb-[4.5rem] sm:pt-14 lg:pb-20 lg:pt-16"
+        className="page grid items-start gap-y-8 pb-16 pt-10 sm:pb-20 sm:pt-14 lg:grid-cols-[minmax(0,1fr)_minmax(0,460px)] lg:gap-x-10 lg:pb-24 lg:pt-16"
         variants={heroLines}
         initial="hidden"
         animate="show"
       >
-        <p className="text-sm font-semibold uppercase tracking-[0.14em] rtl:tracking-normal">{t("board.nationalHighest")}</p>
-        <div className="mt-4 flex flex-wrap items-end gap-x-8 gap-y-4">
-          <div className="flex items-center gap-5">
-            <HeroNumeral level={level} />
-            <PulsingIcon level={level} radar className="h-12 w-12 sm:h-16 sm:w-16" ringClass="p-3 sm:p-4" />
+        <div className="min-w-0">
+          <p className="text-sm font-semibold uppercase tracking-[0.14em] rtl:tracking-normal">{t("board.nationalHighest")}</p>
+          <div className="mt-4 flex flex-wrap items-end gap-x-8 gap-y-4">
+            <div className="flex items-center gap-5">
+              <HeroNumeral level={level} />
+              <PulsingIcon level={level} radar className="h-12 w-12 sm:h-16 sm:w-16" ringClass="p-3 sm:p-4" />
+            </div>
+            <div className="min-w-0 pb-2">
+              <m.h1 id="banner-title" variants={heroLine} className="text-3xl font-semibold sm:text-4xl lg:text-5xl">
+                {label}
+              </m.h1>
+              {otherName && (
+                <m.p
+                  variants={heroLine}
+                  lang={lang === "ur" ? "en" : "ur"}
+                  dir={lang === "ur" ? "ltr" : "rtl"}
+                  className={`mt-1 text-lg font-medium sm:text-xl ${lang === "ur" ? "" : "urdu"}`}
+                >
+                  {otherName}
+                </m.p>
+              )}
+            </div>
           </div>
-          <div className="min-w-0 pb-2">
-            <m.h1 id="banner-title" variants={heroLine} className="text-3xl font-semibold sm:text-4xl lg:text-5xl">
-              {label}
-            </m.h1>
-            {otherName && (
-              <m.p
-                variants={heroLine}
-                lang={lang === "ur" ? "en" : "ur"}
-                dir={lang === "ur" ? "ltr" : "rtl"}
-                className={`mt-1 text-lg font-medium sm:text-xl ${lang === "ur" ? "" : "urdu"}`}
-              >
-                {otherName}
-              </m.p>
-            )}
-          </div>
-        </div>
 
-        <m.p variants={heroLine} className="mt-6 max-w-3xl text-lg font-medium sm:text-xl">
-          {level <= 1 && <CircleCheck className="me-2 inline h-6 w-6 -translate-y-0.5 text-emerald-300" aria-hidden="true" />}
-          {summary.alerting_districts === 0
-            ? t("board.allCalm", { total: summary.total_districts })
-            : t("board.alertingDistricts", { n: summary.alerting_districts, total: summary.total_districts })}
-        </m.p>
-        {firstAction && (
-          <m.p variants={heroLine} className="mt-2 max-w-3xl text-base font-semibold sm:text-lg">
-            {t("board.whatToDo")}: {firstAction}
+          <m.p variants={heroLine} className="mt-6 max-w-3xl text-lg font-medium sm:text-xl">
+            {level <= 1 && <CircleCheck className="me-2 inline h-6 w-6 -translate-y-0.5 text-emerald-300" aria-hidden="true" />}
+            {summary.alerting_districts === 0
+              ? t("board.allCalm", { total: summary.total_districts })
+              : t("board.alertingDistricts", { n: summary.alerting_districts, total: summary.total_districts })}
           </m.p>
-        )}
-        <m.p variants={heroLine} className="hero-live mt-6 flex flex-wrap items-center gap-x-2 text-sm font-medium">
-          <span className="num">{t("common.updated", { time: formatDateTime(summary.generated_at, lang) })}</span>
-          <span aria-hidden="true">·</span>
-          <span className="inline-flex items-center gap-2">
-            <span className="live-dot" aria-hidden="true" />
-            {t("board.live")}
-          </span>
-        </m.p>
+          {firstAction && (
+            <m.p variants={heroLine} className="mt-2 max-w-3xl text-base font-semibold sm:text-lg">
+              {t("board.whatToDo")}: {firstAction}
+            </m.p>
+          )}
+          <m.p variants={heroLine} className="hero-live mt-6 flex flex-wrap items-center gap-x-2 text-sm font-medium">
+            <span className="num">{t("common.updated", { time: formatDateTime(summary.generated_at, lang) })}</span>
+            <span aria-hidden="true">·</span>
+            <span className="inline-flex items-center gap-2">
+              <span className="live-dot" aria-hidden="true" />
+              {t("board.live")}
+            </span>
+          </m.p>
+        </div>
+        <m.div variants={heroLine}>
+          <HeroGlobePanel levelByDistrict={levelByDistrict} />
+        </m.div>
       </m.div>
       <HeroWaves />
     </section>
@@ -465,7 +480,7 @@ export default function AlertBoardPage() {
       {takeover.length > 0 && <Takeover alerts={takeover} onAcknowledge={(id) => setAcked((a) => [...a, id])} />}
 
       {summary.data ? (
-        <Hero summary={summary.data} />
+        <Hero summary={summary.data} levelByDistrict={active.data ? levelByDistrict : null} />
       ) : summary.error ? (
         <div className="page pt-8">
           <ErrorNotice error={summary.error} onRetry={summary.reload} />

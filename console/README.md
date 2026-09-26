@@ -102,6 +102,7 @@ screen.
 Performance:
 
 - The home mini-map is plain SVG from `public/geo/minimap.json` (50 KB, 18 KB gzip). `npm run minimap` pre-simplifies it from the 900 KB GeoJSON, and the page fetches it only once it scrolls into view
+- The home hero's dotted globe is `cobe` (WebGL, ~13 KB, no three.js), loaded in its own chunk after the hero mounts. Its district markers come from `public/geo/globe-points.json` (5 KB; `npm run globe-points` rebuilds it from GeoJSON centroids, with `districts.py` city coordinates for the 6 districts that have no polygon). The render loop runs only while the globe is on screen and the tab is visible; under reduced motion it draws single still frames; without WebGL the hero shows the SVG mini-map instead
 - Leaflet loads only on `/map`, and Recharts only in the map's district panel (lazily)
 - `/explain` and `/predict` draw SHAP values as CSS glow bars, with no chart library
 - On English pages the few Urdu lines use the device's Arabic-script font. The 240 KB Nastaliq file downloads only once a reader picks Urdu
@@ -192,7 +193,8 @@ console/
 ├── public/geo/pakistan_districts.geojson   # copied from frontend/assets/geo
 ├── src/app/                  # one folder per route (App Router)
 ├── public/geo/minimap.json                 # simplified SVG paths (npm run minimap)
-├── scripts/                  # build-minimap.mjs, screenshots.mjs (optional, Playwright)
+├── public/geo/globe-points.json            # one [lat, lon] per district (npm run globe-points)
+├── scripts/                  # build-minimap.mjs, build-globe-points.mjs, screenshots.mjs (optional, Playwright)
 ├── src/components/           # chrome (header, tab bar, footer), Motion, LevelBand, level badge,
 │                             # takeover, MiniMap, DistrictMap, charts, ShapBars, QrCode, Steps, Chips
 ├── src/i18n/                 # EN/UR dictionary + language provider (RTL)

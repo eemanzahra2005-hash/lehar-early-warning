@@ -10,9 +10,11 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "screenshots": "node scripts/screenshots.mjs",
-    "minimap": "node scripts/build-minimap.mjs"
+    "minimap": "node scripts/build-minimap.mjs",
+    "globe-points": "node scripts/build-globe-points.mjs"
   },
   "dependencies": {
+    "cobe": "2.0.1",
     "framer-motion": "13.4.4",
     "leaflet": "1.9.4",
     "lucide-react": "1.48.0",

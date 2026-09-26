@@ -875,6 +875,54 @@ effects through the `prefers-reduced-motion` block in `globals.css`.
         - a ResizeObserver re-rendered the whole map view on load, so it
           now runs only when a tablet panel is open
 
+### Phase 5c addendum — dotted globe hero + district pill — **DONE**
+
+- [x] `cobe` 2.0.1 (WebGL, ~13 KB, the only new dependency; no three.js)
+      draws a dotted globe on the right of the home hero, resting on
+      Pakistan and swaying slowly ±26° around it. It sways instead of
+      spinning fully so alerting districts never sit on the far side
+- [x] Markers for all 107 districts:
+      - positions in `public/geo/globe-points.json`
+        (`scripts/build-globe-points.mjs`): GeoJSON polygon centroids, with
+        `districts.py` city coordinates for Chiniot, Nankana Sahib, Larkana,
+        Sujawal, Mirpur and Kotli, which have no polygon
+      - calm districts are faint small dots; alerting ones are drawn in
+        their level ink, larger with each level, over a pulsing halo
+- [x] The render loop runs only while the globe is on screen AND the tab is
+      visible. Under reduced motion it draws single still frames, redrawn
+      only on new data or a new selection. Without WebGL, or if cobe fails
+      to load, the hero shows the existing SVG mini-map instead
+- [x] Layout: from 1024 px the globe (460 px) sits beside the text. Below
+      that it stacks under the text (300 px on phones, 380 px on small
+      tablets). Under 360 px it is hidden and only the pill remains
+- [x] Glass district pill: an ARIA 1.2 combobox over the globe's lower half.
+      - search in EN or UR, word starts first
+      - Up/Down to move, Enter to pick, Escape to close, a second Escape
+        clears the search
+      - screen readers hear how many districts match
+      - picking a district turns the globe to it and opens a card with its
+        current level, EN/UR name, last alert (newest of any status from
+        `GET /alerts?district=`), "View district" (→ `/map?district=`) and
+        the rule-12 disclaimer
+      - Urdu district names: new `src/lib/districtNames.ts` (none existed
+        in the repo), tested to cover exactly `districts.py`
+- [x] HUD:
+      - 1 px frame lines along the content column, with level-coloured
+        corner dots
+      - a dark vignette. Level 2 gets a lighter one, and a test holds the
+        hero text to AA at the vignette's darkest point on every level
+      - a mono "LIVE · 107 districts monitored" caption on dark glass
+- [x] Existing hero motion kept: mesh blobs, sweep, waves, numeral spring,
+      staggered lines
+- [x] Checked in Chrome (Playwright, scratch script not shipped) at 340,
+      390, 820 and 1280 px, with and without reduced motion: WebGL canvas
+      renders, no console errors, keyboard pick works. Alert markers were
+      eyeballed by rewriting `/alerts/active` in the browser only (the live
+      backend had every district at L1); nothing was written to the backend
+- [x] Quality gates: lint, `tsc --noEmit` and build pass. vitest:
+      **43 passed** (was 28). Backend pytest, unchanged: **700 passed**
+- [ ] Not redone: `docs/screenshots/` and Lighthouse (the home hero changed)
+
 ## Phase 6 — Free deployment (Neon + Render + Vercel + cron-job.org)
 
 - [ ] PostgreSQL on Neon (free tier)

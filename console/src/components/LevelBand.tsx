@@ -48,6 +48,29 @@ export function LevelBackdrop({ level, hero = false }: { level: number; hero?: b
 }
 
 /**
+ * The home hero's "HUD": a soft dark vignette, thin 1 px frame lines along
+ * the content column, and a small level-coloured dot at each corner where
+ * they cross. Purely decorative; put it after <LevelBackdrop hero />.
+ */
+export function HeroHud() {
+  return (
+    <>
+      <div className="hero-vignette" aria-hidden="true" />
+      <div className="hero-hud" aria-hidden="true">
+        <span className="hud-h top" />
+        <span className="hud-h bottom" />
+        <span className="hud-v start" />
+        <span className="hud-v end" />
+        <span className="hud-dot tl" />
+        <span className="hud-dot tr" />
+        <span className="hud-dot bl" />
+        <span className="hud-dot br" />
+      </div>
+    </>
+  );
+}
+
+/**
  * Level icon with expanding pulse rings from Level 3 upwards. `radar` (home
  * hero) rings at every level instead: calm every 3 s, stronger and faster
  * from Level 3.

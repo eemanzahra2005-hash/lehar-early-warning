@@ -532,6 +532,126 @@ html[lang="en"] .urdu {
 /* The live dot itself pulses as well as its ring. */
 .hero-live .live-dot { animation: dot-pulse 2s ease-in-out infinite; }
 
+/* --- Home hero: globe + HUD (Phase 5c) ----------------------------------- */
+
+/* A soft dark vignette towards the band's edges. Darkening only ever raises
+   contrast for white text; Level 2 (dark text on yellow) gets a lighter one,
+   and src/lib/__tests__/globe.test.ts holds its darkest point to AA. */
+.lvl-scope-0, .lvl-scope-1, .lvl-scope-3, .lvl-scope-4, .lvl-scope-5 { --hero-vignette: 0.42; }
+.lvl-scope-2 { --hero-vignette: 0.22; }
+.hero-vignette {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background: radial-gradient(120% 95% at 40% 40%, transparent 55%, rgb(0 0 0 / var(--hero-vignette)) 100%);
+}
+
+/* HUD frame: thin 1 px lines running edge to edge along the content column
+   and above the waves, with a small level-coloured dot where they cross. */
+.hero-hud { --hud-line: rgb(255 255 255 / 0.1); --hud-dot: var(--lvl-ink); position: absolute; inset: 0; z-index: -1; pointer-events: none; }
+.lvl-scope-2 .hero-hud { --hud-line: rgb(17 24 39 / 0.2); --hud-dot: #111827; }
+.hero-hud { --hud-x: max(12px, calc(50% - 600px + 12px)); --hud-top: 14px; --hud-bottom: clamp(36px, 6vw, 58px); }
+.hud-h, .hud-v { position: absolute; background: var(--hud-line); }
+.hud-h { inset-inline: 0; height: 1px; }
+.hud-h.top { top: var(--hud-top); }
+.hud-h.bottom { bottom: var(--hud-bottom); }
+.hud-v { inset-block: 0; width: 1px; }
+.hud-v.start { left: var(--hud-x); }
+.hud-v.end { right: var(--hud-x); }
+.hud-dot {
+  position: absolute;
+  width: 5px;
+  height: 5px;
+  margin: -2px;
+  border-radius: 9999px;
+  background: var(--hud-dot);
+  box-shadow: 0 0 8px 1px var(--lvl-glow);
+}
+.hud-dot.tl { top: var(--hud-top); left: var(--hud-x); }
+.hud-dot.tr { top: var(--hud-top); right: var(--hud-x); }
+.hud-dot.bl { bottom: var(--hud-bottom); left: var(--hud-x); }
+.hud-dot.br { bottom: var(--hud-bottom); right: var(--hud-x); }
+
+/* The globe sits in a pool of shadow, like a lit object on a dark stage. */
+.hero-globe-stage::before {
+  content: "";
+  position: absolute;
+  inset: -8%;
+  z-index: -1;
+  border-radius: 9999px;
+  background: radial-gradient(closest-side, rgb(3 6 12 / 0.55), rgb(3 6 12 / 0.25) 65%, transparent);
+  pointer-events: none;
+}
+.hero-globe-canvas { display: block; contain: layout paint size; }
+
+/* HUD caption, pill, list and card are all dark glass with their own light
+   text, so they stay AA on every level's band (7:1+ even over L2 yellow). */
+.hero-hud-caption {
+  width: fit-content;
+  margin-inline: auto;
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  background: rgb(7 11 20 / 0.82);
+  border: 1px solid rgb(255 255 255 / 0.1);
+  color: #b4bfcd;
+  letter-spacing: 0.14em;
+}
+html[lang="ur"] .hero-hud-caption { letter-spacing: 0; }
+@media (max-width: 639px) {
+  .hero-hud-caption { letter-spacing: 0.04em; white-space: nowrap; }
+}
+.hero-pill {
+  min-height: 56px;
+  border-radius: 9999px;
+  background: rgb(7 11 20 / 0.82);
+  border: 1px solid rgb(255 255 255 / 0.22);
+  color: var(--text);
+  backdrop-filter: blur(14px) saturate(140%);
+  -webkit-backdrop-filter: blur(14px) saturate(140%);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.1), 0 16px 40px -14px rgb(0 0 0 / 0.8);
+  transition: border-color 150ms ease, box-shadow 150ms ease;
+}
+.hero-pill:focus-within {
+  border-color: var(--accent);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.1), 0 0 0 3px rgb(94 234 212 / 0.25), 0 16px 40px -14px rgb(0 0 0 / 0.8);
+}
+/* The pill shows focus (the teal ring above); no second outline inside it. */
+.hero-pill-input { color: var(--text); }
+.hero-pill-input:focus-visible { outline: none; }
+.hero-pill-input::placeholder { color: #b4bfcd; opacity: 1; }
+.hero-pill-btn {
+  display: inline-grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 44px;
+  height: 44px;
+  border-radius: 9999px;
+  background: rgb(255 255 255 / 0.08);
+  color: var(--text);
+  transition: background-color 150ms ease;
+}
+.hero-pill-btn:hover { background: rgb(255 255 255 / 0.16); }
+.hero-pill-btn:disabled { opacity: 0.5; }
+/* Overlap the globe's lower half, as a percentage of the column's width
+   (the stage is square, so this tracks the globe at every size). */
+.hero-pill-overlap { margin-top: -22%; }
+.hero-listbox, .hero-card {
+  background: rgb(14 21 36 / 0.96);
+  border: 1px solid rgb(255 255 255 / 0.14);
+  border-radius: 1rem;
+  color: var(--text);
+  box-shadow: 0 24px 48px -20px rgb(0 0 0 / 0.85);
+}
+.hero-card { backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); }
+.hero-listbox { scrollbar-width: thin; }
+
+/* Very narrow phones: no globe, just the pill (and its card). */
+@media (max-width: 359px) {
+  .hero-globe-stage { display: none; }
+  .hero-pill-overlap { margin-top: 0.75rem; }
+}
+
 /* Skeleton shimmer while data loads. */
 .skeleton {
   position: relative;
